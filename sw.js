@@ -5,7 +5,7 @@
    revalidate). L'app è interamente statica e offline-first.
    ============================================================ */
 
-const CACHE = 'ikaro-v10';
+const CACHE = 'ikaro-v11';
 
 const SHELL = [
   '/',
@@ -34,6 +34,7 @@ const SHELL = [
   '/js/components/ui.js',
   '/js/components/onboarding.js',
   '/data/exercises.json',
+  '/data/foods.json',
   '/assets/fonts/Jost-var.woff2',
   '/assets/icon-192.svg',
   '/assets/icon-512.svg',

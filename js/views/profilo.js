@@ -109,6 +109,21 @@ export function renderProfilo(root) {
       <button class="btn btn-block btn-danger mt-16" id="p-reset">Cancella tutti i dati</button>
     </div>
 
+    <div class="card mt-16">
+      <div class="card-title">Dati e licenze</div>
+      <p class="muted small" style="line-height:1.5;">
+        I valori nutrizionali degli alimenti vengono da
+        <a href="https://it.openfoodfacts.org" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">OpenFoodFacts</a>,
+        un database aperto e collaborativo, distribuito con licenza
+        <a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">ODbL</a>.
+      </p>
+      <p class="faint mt-8" style="line-height:1.5;">
+        Sono dati compilativi: un alimento vero può discostarsi da quello a
+        catalogo. Se un valore ti sembra sbagliato, correggilo creando il
+        tuo alimento — quello vince sempre sul catalogo.
+      </p>
+    </div>
+
     <p class="center faint mt-24">IKARO · vola alto, atterra leggero</p>
   `;
 
@@ -176,8 +191,7 @@ export function renderProfilo(root) {
       water:  num(root, '#p-water', 0.5, 8),
       week:   num(root, '#p-week', 1, 14),
       weight: num(root, '#p-weight', 30, 250),
-      
-      
+      rest:   num(root, '#p-rest', 15, 900),
     };
 
     // 0 è un valore legittimo per i carboidrati: non usare il falsy check
@@ -273,7 +287,5 @@ function field(id, label, value, dec) {
 }
 
 function num(root, sel, min, max) {
-  const el = root.querySelector(sel);
-  if (!el) { console.error(`IKARO: campo ${sel} assente dal markup.`); return null; }
-  return parseDecimal(el.value, min, max);
+  return parseDecimal(root.querySelector(sel).value, min, max);
 }

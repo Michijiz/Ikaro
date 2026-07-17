@@ -22,9 +22,11 @@ import * as db from './db.js';
 /** Alzare questo numero forza il ri-download al prossimo avvio. */
 const CATALOG_VERSION = 1;
 const EXERCISES_URL = '/data/exercises.json';
+const FOODS_URL = '/data/foods.json';
 
 /** Cache sincrona: popolata da loadCatalogs(), letta da tutto il resto. */
 let exercises = [];
+let foods = [];
 /** Indice nome/alias normalizzato → esercizio. Costruito una volta sola. */
 let byName = new Map();
 
@@ -64,49 +66,60 @@ function buildIndex() {
 }
 
 /**
- * Carica il catalogo esercizi: prima dalla cache IDB, poi dalla rete
- * se manca o se la versione è vecchia. Non lancia mai.
- * @returns {Promise<{ok:boolean, source:'cache'|'network'|'none'}>}
+ * Carica un catalogo: prima dalla cache IDB, poi dalla rete se manca
+ * o se la versione è vecchia. Non lancia mai.
+ * @param {string} id chiave in IDB ('exercises' | 'foods')
+ * @param {string} url sorgente statica
+ * @param {string} campo nome dell'array dentro il JSON
+ * @returns {Promise<{ok:boolean, source:'cache'|'network'|'none', voci:Array}>}
  */
-export async function loadCatalogs() {
+async function loadCatalog(id, url, campo) {
   // 1. Cache locale: è la via veloce e l'unica che funziona offline
   try {
-    const cached = await db.get(db.STORES.CATALOG, 'exercises');
-    if (cached && cached.version === CATALOG_VERSION && cached.esercizi?.length) {
-      exercises = cached.esercizi;
-      buildIndex();
-      return { ok: true, source: 'cache' };
+    const cached = await db.get(db.STORES.CATALOG, id);
+    if (cached && cached.version === CATALOG_VERSION && cached.voci?.length) {
+      return { ok: true, source: 'cache', voci: cached.voci };
     }
   } catch (e) {
-    console.warn('IKARO: cache catalogo non leggibile.', e);
+    console.warn(`IKARO: cache catalogo ${id} non leggibile.`, e);
   }
 
   // 2. Rete: solo al primo avvio o quando CATALOG_VERSION cambia
   try {
-    const res = await fetch(EXERCISES_URL, { cache: 'no-cache' });
+    const res = await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (!Array.isArray(data.esercizi) || data.esercizi.length === 0) {
+    const voci = data[campo];
+    if (!Array.isArray(voci) || voci.length === 0) {
       throw new Error('catalogo vuoto o malformato');
     }
 
-    exercises = data.esercizi;
-    buildIndex();
-
     // Il salvataggio in cache è un'ottimizzazione: se fallisce, pazienza
-    db.put(db.STORES.CATALOG, {
-      id: 'exercises',
-      version: CATALOG_VERSION,
-      esercizi: exercises,
-    }).catch(e => console.warn('IKARO: catalogo non messo in cache.', e));
+    db.put(db.STORES.CATALOG, { id, version: CATALOG_VERSION, voci })
+      .catch(e => console.warn(`IKARO: catalogo ${id} non messo in cache.`, e));
 
-    return { ok: true, source: 'network' };
+    return { ok: true, source: 'network', voci };
   } catch (e) {
-    console.warn('IKARO: catalogo esercizi non disponibile.', e);
-    exercises = [];
-    buildIndex();
-    return { ok: false, source: 'none' };
+    console.warn(`IKARO: catalogo ${id} non disponibile.`, e);
+    return { ok: false, source: 'none', voci: [] };
   }
+}
+
+/**
+ * Carica tutti i cataloghi. In parallelo: sono indipendenti, e il primo
+ * avvio non deve costare due round-trip in fila.
+ */
+export async function loadCatalogs() {
+  const [ex, fd] = await Promise.all([
+    loadCatalog('exercises', EXERCISES_URL, 'esercizi'),
+    loadCatalog('foods', FOODS_URL, 'alimenti'),
+  ]);
+
+  exercises = ex.voci;
+  foods = fd.voci;
+  buildIndex();
+
+  return { exercises: ex, foods: fd };
 }
 
 /* ---------- Lettura (sincrona) ---------- */
@@ -116,7 +129,12 @@ export function catalogExercises() {
   return exercises;
 }
 
-/** Vero se il catalogo è stato caricato. */
+/** Alimenti del catalogo ufficiale (OpenFoodFacts, ODbL). */
+export function catalogFoods() {
+  return foods;
+}
+
+/** Vero se il catalogo esercizi è stato caricato. */
 export function catalogReady() {
   return exercises.length > 0;
 }

@@ -16,7 +16,7 @@
 
 import * as db from './db.js';
 import {
-  loadCatalogs, catalogExercises, catalogExerciseById,
+  loadCatalogs, catalogExercises, catalogExerciseById, catalogFoods,
   matchExerciseByName, slugify, normalizeName,
 } from './catalog.js';
 
@@ -577,9 +577,19 @@ export function recentSessions(limit = 20) {
 
 /* ---------- Alimenti custom ---------- */
 
-/** Alimenti predefiniti + creati dall'utente. */
+/**
+ * Alimenti disponibili: i tuoi, poi il catalogo.
+ *
+ * FOOD_DB resta come rete di sicurezza, non come sorgente: se il catalogo
+ * c'è, i suoi ~40 alimenti sarebbero solo doppioni. Se il catalogo manca
+ * (primo avvio offline, download fallito) l'app non deve però mostrarti
+ * una lista vuota.
+ */
 export function allFoods() {
-  return [...customFoods, ...FOOD_DB];
+  const catalogo = catalogFoods();
+  return catalogo.length
+    ? [...customFoods, ...catalogo]
+    : [...customFoods, ...FOOD_DB];
 }
 
 export function getCustomFoods() {

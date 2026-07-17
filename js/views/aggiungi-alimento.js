@@ -29,7 +29,9 @@ export function renderAggiungiAlimento(root) {
   });
 
   function paint() {
-    const results = filterFoods(query, allFoods());
+    const foods = allFoods();
+    const results = filterFoods(query, foods);
+    const troncato = results.length === MAX_RESULTS;
 
     root.innerHTML = `
       <header class="page-head">
@@ -60,9 +62,15 @@ export function renderAggiungiAlimento(root) {
             </div>`).join('')}
         </div>` : ''}
 
-      <div class="eyebrow mt-16">${query ? 'Risultati' : 'Tutti gli alimenti'}</div>
+      <div class="eyebrow mt-16">${query ? 'Risultati' : 'Cerca'}</div>
       <div class="card mt-8" style="padding:2px 14px;">
-        ${results.length === 0 ? `
+        ${!query ? `
+          <div class="empty">
+            <div class="icon">🔍</div>
+            Scrivi il nome di un alimento.
+            <div class="faint mt-8">${foods.length} disponibili</div>
+          </div>
+        ` : results.length === 0 ? `
           <div class="empty">
             <div class="icon">🔍</div>
             Nessun risultato per «${esc(query)}».
@@ -79,12 +87,16 @@ export function renderAggiungiAlimento(root) {
                   <strong class="small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(f.nome)}</strong>
                   ${f.custom ? '<span class="tag-custom">tuo</span>' : ''}
                 </div>
-                <div class="faint">porzione ${f.porzione} g</div>
+                <div class="faint">${f.marca ? `${esc(f.marca)} · ` : ''}porzione ${f.porzione} g</div>
               </div>
             </div>
             <span class="tabular muted small" style="flex-shrink:0;">${Math.round(f.kcal * f.porzione / 100)} kcal</span>
           </div>
         `).join('')}
+        ${troncato ? `
+          <div class="faint" style="padding:8px 0;text-align:center;">
+            Primi ${MAX_RESULTS} risultati — scrivi qualcosa in più per restringere.
+          </div>` : ''}
       </div>
     `;
 
@@ -345,12 +357,49 @@ function openFoodEditor(existing, onDone) {
 
 /* ---------- helper ---------- */
 
-/** Filtro insensibile a maiuscole e accenti. I custom vengono prima. */
+/** Quanti risultati disegnare al massimo. Vedi filterFoods. */
+const MAX_RESULTS = 60;
+
+const norm = s => String(s || '').toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+/**
+ * Filtro insensibile a maiuscole e accenti, ordinato per pertinenza
+ * e tagliato a MAX_RESULTS.
+ *
+ * Il tetto non è una scorciatoia: il catalogo ha migliaia di voci e la
+ * vista si ridisegna a ogni tasto premuto. Senza limite, `innerHTML` con
+ * duemila righe rende la ricerca inutilizzabile sul telefono — che è
+ * esattamente il posto in cui la si usa.
+ *
+ * Ordine: i tuoi alimenti prima di tutto, poi chi inizia con la query
+ * (cerchi "pollo", vuoi "Pollo", non "Insalata di pollo"), poi il resto,
+ * a parità di rango per nome più corto: il generico prima del prodotto.
+ */
 function filterFoods(q, foods) {
-  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const nq = norm(q.trim());
-  if (!nq) return foods;
-  return foods.filter(f => norm(f.nome).includes(nq));
+  if (!nq) return [];
+
+  const out = [];
+  for (const f of foods) {
+    const n = norm(f.nome);
+    const i = n.indexOf(nq);
+    if (i === -1) {
+      // Seconda chance sul marchio: "Barilla" deve trovare qualcosa
+      if (!f.marca || !norm(f.marca).includes(nq)) continue;
+      out.push({ f, rank: 3 });
+      continue;
+    }
+    out.push({ f, rank: f.custom ? 0 : (i === 0 ? 1 : 2) });
+  }
+
+  out.sort((a, b) =>
+    a.rank - b.rank ||
+    a.f.nome.length - b.f.nome.length ||
+    a.f.nome.localeCompare(b.f.nome, 'it')
+  );
+
+  return out.slice(0, MAX_RESULTS).map(x => x.f);
 }
 
 /** Suggerisce il pasto in base all'ora corrente. */
