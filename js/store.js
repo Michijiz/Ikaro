@@ -17,7 +17,7 @@
 import * as db from './db.js';
 
 export const STORAGE_KEY = 'ikaro-state-v2';
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /* ---------- Utility date (funzioni pure) ---------- */
 
@@ -140,6 +140,8 @@ function buildSeedState() {
         water: 2.5, weightTarget: 75, workoutsPerWeek: 4,
       },
       waterStepMl: 250,
+      lastExport: null,        // data ISO dell'ultimo backup
+      backupSnoozeUntil: null, // fino a quando tacere il promemoria
     },
     workouts: [],
     weights: [],
@@ -324,6 +326,13 @@ function migrate(s) {
     s.profile.altezza = s.profile.altezza ?? null;
     s.profile.obiettivo = s.profile.obiettivo ?? null;
     v = 5;
+  }
+
+  if (v === 5) {
+    // Promemoria di backup: serve sapere quando è stato fatto l'ultimo
+    s.profile.lastExport = s.profile.lastExport ?? null;
+    s.profile.backupSnoozeUntil = s.profile.backupSnoozeUntil ?? null;
+    v = 6;
   }
 
   s.schemaVersion = v;
@@ -873,6 +882,46 @@ export function pesoAttuale(s = state) {
   return [...s.weights].sort((a, b) => a.data.localeCompare(b.data)).at(-1).peso;
 }
 
+/* ---------- Promemoria di backup ---------- */
+
+/** Vero se ci sono dati che varrebbe la pena perdere. */
+export function hasRealData(s = state) {
+  return workoutCache.length >= 3
+      || s.weights.length >= 3
+      || s.workouts.length >= 1 && workoutCache.length >= 1;
+}
+
+/**
+ * Se e perché mostrare il promemoria di backup.
+ *
+ * Un avviso a ogni apertura diventa invisibile in tre giorni, e peggio:
+ * abitua a chiuderlo senza leggere. Quindi parla solo quando serve —
+ * mai fatto un backup e ormai hai dati veri, oppure è passato un mese.
+ *
+ * @returns {{mostra:boolean, motivo?:string}}
+ */
+export function backupStatus(s = state) {
+  if (!hasRealData(s)) return { mostra: false };
+
+  const snooze = s.profile.backupSnoozeUntil;
+  if (snooze && todayKey() < snooze) return { mostra: false };
+
+  const last = s.profile.lastExport;
+  if (!last) {
+    return { mostra: true, motivo: 'mai' };
+  }
+
+  const giorni = Math.round((new Date(todayKey()) - new Date(last.slice(0, 10))) / 86400000);
+  if (giorni >= 30) return { mostra: true, motivo: 'vecchio', giorni };
+
+  return { mostra: false };
+}
+
+/** Rimanda il promemoria di un mese. */
+export function snoozeBackup(giorni = 30) {
+  update(s => { s.profile.backupSnoozeUntil = todayKey(giorni); });
+}
+
 /* ---------- Export / Import ---------- */
 
 /**
@@ -886,10 +935,17 @@ export async function exportAll() {
     db.getAll(db.STORES.FOODS).catch(() => []),
   ]);
 
+  // Segna quando: è ciò su cui si regge il promemoria
+  const quando = new Date().toISOString();
+  update(st => {
+    st.profile.lastExport = quando;
+    st.profile.backupSnoozeUntil = null;
+  });
+
   return {
     app: 'IKARO',
     schemaVersion: SCHEMA_VERSION,
-    exportedAt: new Date().toISOString(),
+    exportedAt: quando,
     state,
     nutritionDays: nutrition || [],
     workoutHistory: workouts || [],
