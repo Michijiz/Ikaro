@@ -1115,7 +1115,6 @@ body[data-booted='true'] #splash {
 .hero {
   border: 1px solid var(--border-strong);
   background:
-    radial-gradient(120% 120% at 100% 0%, var(--accent-dim) 0%, transparent 62%),
     var(--card);
 }
 .hero .eyebrow { color: var(--accent); margin-bottom: 6px; }

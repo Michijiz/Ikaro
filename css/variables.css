@@ -32,7 +32,7 @@
 
   /* Bordi: schiariscono sui temi scuri, scuriscono su quelli chiari */
   --border-tint:   var(--shade), var(--shade), var(--shade);
-  --border:        rgb(var(--border-tint) / 0.10);
+  --border:        rgb(var(--accent-rgb) / 0.42);
   --border-strong: rgb(var(--accent-rgb) / 0.42);
 
   /* Accento */
