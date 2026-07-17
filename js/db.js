@@ -5,18 +5,26 @@
      - nutritionDays : storico completo dei pasti, giorno per giorno
      - workoutHistory: storico delle sessioni di allenamento
      - customFoods   : alimenti creati dall'utente
+     - customExercises: esercizi creati dall'utente
+     - catalog       : cataloghi statici scaricati (esercizi, alimenti)
    Le API sono tutte async e non lanciano mai: in caso di errore
    ritornano un fallback e lo segnalano al chiamante.
    ============================================================ */
 
 const DB_NAME = 'ikaro';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const STORES = {
   NUTRITION: 'nutritionDays',
   WORKOUTS: 'workoutHistory',
   FOODS: 'customFoods',
+  EXERCISES: 'customExercises',
+  CATALOG: 'catalog',
 };
+
+/* Store che contengono dati dell'utente: il reset e l'export guardano qui.
+   `catalog` ne resta fuori: è una cache di dati pubblici, non roba sua. */
+export const USER_STORES = [STORES.NUTRITION, STORES.WORKOUTS, STORES.FOODS, STORES.EXERCISES];
 
 let dbPromise = null;
 
@@ -49,6 +57,17 @@ export function openDB() {
       // Alimenti custom
       if (!db.objectStoreNames.contains(STORES.FOODS)) {
         db.createObjectStore(STORES.FOODS, { keyPath: 'id' });
+      }
+
+      // Esercizi custom (v2)
+      if (!db.objectStoreNames.contains(STORES.EXERCISES)) {
+        db.createObjectStore(STORES.EXERCISES, { keyPath: 'id' });
+      }
+
+      // Cataloghi statici scaricati: una riga per catalogo (v2).
+      // Cache pura: se sparisce si riscarica, nessun dato utente qui dentro.
+      if (!db.objectStoreNames.contains(STORES.CATALOG)) {
+        db.createObjectStore(STORES.CATALOG, { keyPath: 'id' });
       }
     };
 

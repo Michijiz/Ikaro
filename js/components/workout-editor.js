@@ -102,7 +102,7 @@ export function openWorkoutEditor(workoutId, onDone) {
       // ha lo stesso schema di serie e reps per tutti gli esercizi
       const last = draft.esercizi[draft.esercizi.length - 1];
       draft.esercizi.push({
-        id: uid(), nome: '',
+        id: uid(), exId: null, nome: '',
         serie: last?.serie || 4,
         reps: last?.reps || 10,
         carico: 0,

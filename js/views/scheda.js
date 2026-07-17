@@ -58,6 +58,7 @@ export function renderScheda(root, workoutId) {
       st.session = {
         workoutId: w.id,
         esercizi: w.esercizi.map(e => ({
+          exId: e.exId || null,
           nome: e.nome,
           serie: numSerie(e),
           reps: e.reps,
@@ -122,6 +123,7 @@ export function renderScheda(root, workoutId) {
     const ss = on ? sess() : null;
     // Senza sessione si guarda il piano; con sessione si guarda ciò che si sta facendo
     const esercizi = on ? ss.esercizi : wNow.esercizi.map(e => ({
+      exId: e.exId || null,
       nome: e.nome, serie: numSerie(e), reps: e.reps,
       carico: e.carico || 0, override: e.override || {},
       done: Array(numSerie(e)).fill(false),
@@ -192,7 +194,7 @@ export function renderScheda(root, workoutId) {
   /* ---------- Card esercizio ---------- */
   function exCard(e, ei, on) {
     const tutteFatte = e.done.every(Boolean);
-    const last = caricoHistory(e.nome, 1)[0];
+    const last = caricoHistory(e, 1)[0];
     const diff = last ? round1(e.carico - last.carico) : null;
 
     return `
@@ -229,7 +231,7 @@ export function renderScheda(root, workoutId) {
 
   /* ---------- Storico carichi (sovraccarico progressivo) ---------- */
   function storicoCarichi(esercizi) {
-    const righe = esercizi.map(e => ({ nome: e.nome, carico: e.carico, storia: caricoHistory(e.nome, 4) }));
+    const righe = esercizi.map(e => ({ nome: e.nome, carico: e.carico, storia: caricoHistory(e, 4) }));
     if (righe.every(r => r.storia.length === 0)) {
       return `
         <div class="card mt-16">
@@ -433,6 +435,9 @@ export function renderScheda(root, workoutId) {
       durata, volume, serieFatte: fatte,
       esercizi: ss.esercizi
         .map(e => ({
+          exId: e.exId || null,
+          // Il nome resta accanto all'id: un record storico deve poter essere
+          // letto anche se un giorno quell'esercizio custom viene eliminato
           nome: e.nome,
           serie: e.done.map((d, i) => d ? { carico: caricoSerie(e, i), reps: e.reps } : null).filter(Boolean),
         }))
