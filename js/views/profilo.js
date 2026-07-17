@@ -176,7 +176,7 @@ export function renderProfilo(root) {
       water:  num(root, '#p-water', 0.5, 8),
       week:   num(root, '#p-week', 1, 14),
       weight: num(root, '#p-weight', 30, 250),
-      rest:   num(root, '#p-rest', 15, 900),
+      
     };
 
     // 0 è un valore legittimo per i carboidrati: non usare il falsy check
@@ -272,5 +272,7 @@ function field(id, label, value, dec) {
 }
 
 function num(root, sel, min, max) {
-  return parseDecimal(root.querySelector(sel).value, min, max);
+  const el = root.querySelector(sel);
+  if (!el) { console.error(`IKARO: campo ${sel} assente dal markup.`); return null; }
+  return parseDecimal(el.value, min, max);
 }
