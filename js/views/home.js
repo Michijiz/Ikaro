@@ -56,6 +56,7 @@ function cardStreak(s) {
   const streak = currentStreak(s);
   const week = streakWeek(s);
   const budget = restBudget(s);
+  const rimasti = riposiRimasti(s);
 
   const LABEL = {
     trained: 'Allenato',
@@ -78,8 +79,10 @@ function cardStreak(s) {
           ${streak === 0
             ? 'Allenati per accenderlo'
             : budget === 0
-              ? 'Nessun riposo previsto dal tuo obiettivo'
-              : `Il riposo lo alimenta: fino a ${budget} ${budget === 1 ? 'giorno' : 'giorni'} di fila`}
+              ? 'Il tuo obiettivo non prevede riposo: salta un giorno e riparti da zero'
+              : rimasti === 0
+                ? 'Hai finito i giorni di riposo: allenati oggi o riparti da zero'
+                : `Puoi ancora riposare ${rimasti} ${rimasti === 1 ? 'giorno' : 'giorni'}`}
         </span>
       </div>
 
@@ -433,6 +436,25 @@ function daQuanto(key) {
   if (gg === 1) return '1 giorno';
   if (gg < 14) return `${gg} giorni`;
   return `${Math.floor(gg / 7)} settimane`;
+}
+
+/**
+ * Giorni di riposo ancora disponibili prima che lo streak si rompa.
+ * Conta i riposi consecutivi già fatti e li sottrae dal budget: dire
+ * "puoi riposare fino a 3 giorni" è vero il primo giorno e una bugia il
+ * terzo, mentre un contatore che scende è utile tutti i giorni.
+ */
+function riposiRimasti(s) {
+  const trained = new Set(s.activityDates);
+  const budget = restBudget(s);
+  let usati = 0;
+  // Oggi non conta: la giornata è ancora aperta
+  for (let i = -1; ; i--) {
+    if (trained.has(todayKey(i))) break;
+    usati++;
+    if (usati > budget) break;
+  }
+  return Math.max(0, budget - usati);
 }
 
 function dataOggi() {
