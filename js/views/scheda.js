@@ -150,18 +150,25 @@ export function renderScheda(root, workoutId) {
       </header>
 
       ${on ? `
+        <div class="mode-bar live">
+          <span class="pulse"></span>
+          Allenamento in corso · tocca i numeri delle serie che finisci
+        </div>
         <div class="progress" style="height:5px;"><i style="width:${pct(fatte, totSerie)}%"></i></div>
         <div class="row mt-8" style="justify-content:space-between;">
-          <span class="faint tabular">${fatte}/${totSerie} serie · ${pct(fatte, totSerie)}%</span>
-          <span class="faint tabular">${fmtInt(volume)} kg di volume</span>
+          <span class="faint tabular">${fatte} serie su ${totSerie} · ${pct(fatte, totSerie)}%</span>
+          <span class="faint tabular">${fmtInt(volume)} kg sollevati</span>
         </div>
       ` : `
+        <div class="mode-bar plan">
+          👁️ Stai guardando la scheda · premi Inizia per allenarti
+        </div>
         <div class="card">
           <span class="badge ${st.cls}">${st.label}</span>
           <div class="stat-row">
             ${statCell(String(wNow.esercizi.length), 'Esercizi')}
             ${statCell(String(totSerie), 'Serie')}
-            ${statCell(fmtInt(volumePrevisto), 'Volume', 'kg')}
+            ${statCell(fmtInt(volumePrevisto), 'Da sollevare', 'kg')}
           </div>
         </div>`}
 
@@ -200,6 +207,7 @@ export function renderScheda(root, workoutId) {
             const ov = e.override && e.override[i] !== undefined;
             return `<button class="serie-dot ${e.done[i] ? 'done' : ''} ${ov ? 'override' : ''} ${justDone === `${ei}-${i}` ? 'just-done' : ''}"
                       data-set="${ei}-${i}"
+                      ${on ? '' : 'disabled'}
                       aria-pressed="${e.done[i]}"
                       aria-label="Serie ${i + 1}${ov ? `, ${fmtNum(caricoSerie(e, i), 1)} kg` : ''}">${i + 1}</button>`;
           }).join('')}
@@ -212,8 +220,8 @@ export function renderScheda(root, workoutId) {
           <span class="faint">kg</span>
           <span class="hint grow">
             ${last
-              ? `Ultima: <b>${fmtNum(last.carico, 1)} kg</b>${diff ? ` · ${diff > 0 ? '▲ +' : '▼ '}${fmtNum(Math.abs(diff), 1)}` : ''}`
-              : 'Primo allenamento per questo esercizio'}
+              ? `L'ultima volta: <b>${fmtNum(last.carico, 1)} kg</b>${diff ? ` · ${diff > 0 ? '▲ +' : '▼ '}${fmtNum(Math.abs(diff), 1)}` : ''}`
+              : 'Primo allenamento con questo esercizio'}
           </span>
         </div>
       </div>`;
@@ -239,7 +247,7 @@ export function renderScheda(root, workoutId) {
       <div class="card mt-16">
         <div class="between">
           <div class="card-title" style="margin:0;">Storico carichi</div>
-          <span class="faint">kg per serie</span>
+          <span class="faint">kg usati per serie</span>
         </div>
         <div style="overflow-x:auto;margin-top:12px;">
           <table class="hist-table">
@@ -364,9 +372,11 @@ export function renderScheda(root, workoutId) {
     const haOverride = e.override && e.override[i] !== undefined;
 
     openModal({
-      title: `${esc(e.nome)} · serie ${i + 1}`,
+      title: `Peso diverso · serie ${i + 1}`,
       body: `
-        <p class="faint">Carico solo per questa serie. Le altre restano a ${fmtNum(e.carico, 1)} kg.</p>
+        <p class="faint">Solo per la serie ${i + 1} di ${esc(e.nome)}.
+        Le altre restano a ${fmtNum(e.carico, 1)} kg. Serve per piramidali,
+        drop set o serie di scarico.</p>
         <label class="col mt-16" style="gap:5px;">
           <span class="faint">Kg per la serie ${i + 1}</span>
           <input id="ov-kg" type="text" inputmode="decimal" value="${fmtNum(attuale, 2)}" enterkeyhint="done">
@@ -446,7 +456,7 @@ export function renderScheda(root, workoutId) {
     });
 
     markActivityToday();
-    toast(`💪 Salvato · ${fmtTime(durata)} · ${fmtInt(volume)} kg`);
+    toast(`💪 Salvato · ${fmtTime(durata)} · ${fmtInt(volume)} kg sollevati`);
     location.hash = '#/allenamento';
   }
 }

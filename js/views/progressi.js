@@ -92,9 +92,11 @@ function paint(root) {
 
     <div class="card mt-16">
       <div class="between">
-        <div class="card-title" style="margin:0;">Massimali (1RM)</div>
+        <div class="card-title" style="margin:0;">Massimali</div>
         ${gain > 0 ? `<span class="badge badge-ok">+${fmtNum(gain, 1)} kg</span>` : ''}
       </div>
+      <p class="faint mt-8">Il peso massimo che riesci a sollevare per una
+      sola ripetizione. Aggiornalo quando cambia: serve a vedere la forza salire.</p>
       <div class="col mt-16" style="gap:10px;">
         ${maxRow('squat', 'Squat', '🦵', m)}
         ${maxRow('panca', 'Panca piana', '🏋️', m)}

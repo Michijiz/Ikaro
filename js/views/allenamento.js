@@ -64,7 +64,7 @@ function paint(root) {
       <div class="week-strip mt-8">${weekStrip(giorniAllenati)}</div>
       <div class="stat-row">
         ${statCell(String(settimana.length), 'Sessioni')}
-        ${statCell(fmtInt(volumeSett), 'Volume', 'kg')}
+        ${statCell(fmtInt(volumeSett), 'Kg sollevati')}
         ${statCell(String(workouts.length), 'Schede')}
       </div>
     </div>
@@ -74,8 +74,12 @@ function paint(root) {
       ${workouts.length === 0 ? `
         <div class="card empty">
           <div class="icon">🏋️</div>
-          Nessuna scheda.<br>
-          Creane una con esercizi, serie e carichi.
+          <strong style="color:var(--text);">Nessuna scheda</strong>
+          <p class="muted small mt-8" style="max-width:300px;margin:8px auto 0;line-height:1.5;">
+            Una scheda è la lista degli esercizi di un allenamento: per ognuno
+            scrivi quante serie fare, quante ripetizioni e con quanti chili.
+            Poi la segui in palestra spuntando le serie finite.
+          </p>
           <div class="mt-16">
             <button class="btn btn-primary" id="btn-new-empty">${ICONS.plus} Crea la prima</button>
           </div>
