@@ -1106,3 +1106,133 @@ body[data-booted='true'] #splash {
   .theme-btn .caret { display: none; }
   .theme-pop { width: 200px; }
 }
+
+/* ============================================================
+   Hero — la risposta a "cosa faccio adesso" (v7)
+   Deve leggersi in mezzo secondo, senza cercare. Tutto il resto
+   della dashboard è contorno e sta sotto, più piccolo.
+   ============================================================ */
+.hero {
+  border: 1px solid var(--border-strong);
+  background:
+    radial-gradient(120% 120% at 100% 0%, var(--accent-dim) 0%, transparent 62%),
+    var(--card);
+}
+.hero .eyebrow { color: var(--accent); margin-bottom: 6px; }
+.hero .hero-title {
+  font-size: 1.6rem; font-weight: 600;
+  letter-spacing: -0.025em; line-height: 1.1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hero .hero-sub {
+  font-size: 0.92rem; color: var(--text-secondary);
+  margin-top: 5px;
+}
+.hero .btn { margin-top: 16px; font-size: 1rem; padding: 15px 18px; }
+
+/* Variante riposo: stessa struttura, nessuna spinta ad agire */
+.hero.rest { border-color: var(--border); background: var(--card); }
+.hero.rest .eyebrow { color: var(--text-faint); }
+
+/* ============================================================
+   Report 7 giorni compatto (v7)
+   Prima erano 21 celle e tre etichette tagliate: per leggerlo
+   serviva il dito. Ora è una riga sola, e il dettaglio sta nei
+   Progressi, che è il posto dei confronti.
+   ============================================================ */
+.week-dots { display: flex; gap: 6px; }
+.week-dot {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+.week-dot .lbl {
+  font-size: 0.66rem; font-weight: 600; color: var(--text-faint);
+}
+.week-dot.today .lbl { color: var(--accent); }
+.week-dot .mark {
+  width: 100%; height: 38px;
+  border-radius: 10px;
+  background: var(--macro-rest);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.95rem;
+  border: 1px solid transparent;
+  transition: background var(--t-med) var(--ease);
+}
+/* Allenato: pieno. Il colore è il messaggio, il resto è didascalia. */
+.week-dot .mark.trained { background: var(--accent); color: var(--on-accent); }
+.week-dot .mark.rest    { color: var(--text-faint); }
+.week-dot.today .mark   { border-color: var(--accent); }
+
+/* Pallino calorie: presente = hai registrato, colore = in target o no */
+.week-dot .kcal-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--macro-rest);
+}
+.week-dot .kcal-dot.ok   { background: var(--accent); }
+.week-dot .kcal-dot.off  { background: var(--warn); }
+.week-dot .kcal-dot.none { background: transparent; border: 1px solid var(--border); }
+
+/* ============================================================
+   Riga compatta (calorie/acqua in dashboard)
+   ============================================================ */
+.mini-row { display: flex; align-items: center; gap: 12px; }
+.mini-row .mini-val {
+  font-size: 1.35rem; font-weight: 500;
+  letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.mini-row .mini-of { font-size: 0.85rem; color: var(--text-faint); }
+
+/* ============================================================
+   Banner promemoria backup
+   ============================================================ */
+.notice {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 13px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-dim);
+  border: 1px solid var(--border-strong);
+  margin-bottom: 16px;
+}
+.notice .ico { font-size: 1.1rem; line-height: 1.3; flex-shrink: 0; }
+.notice .txt { flex: 1; min-width: 0; font-size: 0.88rem; line-height: 1.4; }
+.notice .txt strong { display: block; margin-bottom: 2px; }
+.notice .acts { display: flex; gap: 8px; margin-top: 10px; }
+.notice .acts .btn { padding: 7px 12px; font-size: 0.82rem; }
+
+/* ============================================================
+   Modalità della scheda: piano vs sessione
+   L'aspetto deve dire da solo in quale delle due sei.
+   ============================================================ */
+.mode-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 13px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem; font-weight: 600;
+  margin-bottom: 14px;
+}
+.mode-bar.plan {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.mode-bar.live {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.mode-bar .pulse {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+/* Le pastiglie di una scheda non ancora avviata sono spente: prima
+   erano identiche a quelle attive ma non facevano niente. */
+.serie-dot[disabled] {
+  opacity: 0.45;
+  border-style: dashed;
+  cursor: default;
+}
+.serie-dot[disabled]:active { transform: none; }
