@@ -1,0 +1,166 @@
+/* ============================================================
+   IKARO — Base: reset, tipografia, layout globale
+   ============================================================ */
+
+/* Jost variabile (100–900), subset latino, self-hostato: nessuna
+   richiesta di rete a terzi e precacheato dal Service Worker.
+   Sostituisce Tw Cen MT, che è proprietario Monotype e non ha
+   licenza web né presenza su iOS/Android. */
+@font-face {
+  font-family: 'Jost';
+  src: url('/assets/fonts/Jost-var.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* 17px invece dei 16 di default: alza in un colpo tutto ciò che è
+   espresso in rem, senza ritoccare cento regole una per una.
+   Gli input restano ≥16px, quindi iOS continua a non zoomare al focus. */
+html {
+  font-size: 106.25%;
+  -webkit-text-size-adjust: 100%;
+  background: var(--bg);
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* Contenitore centrale: mobile-first, centrato su desktop.
+   Il padding superiore include la safe area: con viewport-fit=cover
+   e status bar translucida, senza env() i titoli finiscono sotto
+   il notch / la Dynamic Island. */
+#app {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  min-height: 100dvh;
+  /* In alto: safe area + header fisso. In basso: bottom nav + safe area. */
+  padding: calc(var(--pad) + var(--header-height) + env(safe-area-inset-top, 0px))
+           calc(var(--pad) + env(safe-area-inset-right, 0px))
+           calc(var(--nav-height) + 28px + env(safe-area-inset-bottom, 0px))
+           calc(var(--pad) + env(safe-area-inset-left, 0px));
+}
+
+/* Striscia sotto la status bar iOS: con apple-mobile-web-app-status-bar-style
+   black-translucent le icone di sistema sono sempre bianche, quindi sul tema
+   chiaro serve un fondo scuro dietro. Sui temi scuri è invisibile. */
+.statusbar-scrim {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--statusbar);
+  z-index: 200;
+  pointer-events: none;
+}
+
+img, svg { display: block; max-width: 100%; }
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  /* 16px minimo: sotto questa soglia iOS zooma al focus */
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  width: 100%;
+  outline: none;
+  transition: border-color var(--t-fast) var(--ease);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+}
+input::placeholder { color: var(--text-faint); }
+
+/* Numeri con cifre tabellari per timer e statistiche */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Tipografia — Jost è geometrico: regge pesi alti e tracking stretto */
+h1 { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em; }
+h2 { font-size: 1.2rem;  font-weight: 600; letter-spacing: -0.01em; }
+h3 { font-size: 1rem;    font-weight: 600; letter-spacing: 0.005em; }
+
+/* Cifre grandi: il dato è il protagonista, la sua unità no */
+.stat {
+  font-size: 1.5rem; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.stat-label {
+  font-size: 0.78rem; font-weight: 400;
+  color: var(--text-faint);
+  letter-spacing: 0.01em;
+}
+
+/* Etichetta di sezione */
+.eyebrow {
+  font-size: 0.74rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+.wordmark {
+  font-weight: 800;
+  letter-spacing: var(--wordmark-spacing);
+  text-transform: uppercase;
+  color: var(--text);
+  font-size: 1.05rem;
+  user-select: none;
+}
+.wordmark .k { color: var(--accent); }
+
+.muted { color: var(--text-secondary); }
+.faint { color: var(--text-faint); font-size: 0.85rem; }
+.small { font-size: 0.9rem; }
+.accent { color: var(--accent); }
+
+/* Utility layout */
+.row { display: flex; align-items: center; gap: 12px; }
+.between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.col { display: flex; flex-direction: column; gap: 6px; }
+.grow { flex: 1; min-width: 0; }
+.center { text-align: center; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+
+/* Focus visibile per navigazione da tastiera */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Riduzione movimento */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbar discreta su desktop */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--macro-rest); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }

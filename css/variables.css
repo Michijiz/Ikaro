@@ -1,0 +1,215 @@
+/* ============================================================
+   IKARO — Design tokens
+
+   Ogni tema dichiara solo la sua ANAGRAFICA (8 valori):
+     --bg-rgb        sfondo app
+     --surface-rgb   base delle card
+     --accent-rgb    colore accento
+     --text-rgb      testo primario
+     --on-accent     testo sopra l'accento (contrasto)
+     --shade         1 = tema scuro, 0 = tema chiaro
+     --statusbar     colore della striscia status bar iOS
+     --macro-mode    'accent' | 'fixed'  (vedi sotto)
+
+   Tutto il resto è DERIVATO qui sotto in :root e non va
+   ridichiarato nei temi: aggiungere un tema costa 8 righe.
+
+   I macro (P/C/F) seguono l'accento con opacità decrescenti
+   (Carbo 100% · Proteine 70% · Grassi 45%), come nel mockup.
+   Eccezione: i temi acromatici (Anthracite, Pure Platinum)
+   userebbero tre grigi indistinguibili → tripletta fissa.
+   ============================================================ */
+
+/* ---------- Derivazioni comuni a tutti i temi ---------- */
+:root {
+  color-scheme: dark;
+
+  /* Superfici */
+  --bg:           rgb(var(--bg-rgb));
+  --bg-elevated:  rgb(var(--surface-rgb) / 0.55);
+  --card:         rgb(var(--surface-rgb));
+  --card-hover:   rgb(var(--surface-rgb) / 0.78);
+
+  /* Bordi: schiariscono sui temi scuri, scuriscono su quelli chiari */
+  --border-tint:   var(--shade), var(--shade), var(--shade);
+  --border:        rgb(var(--border-tint) / 0.10);
+  --border-strong: rgb(var(--accent-rgb) / 0.42);
+
+  /* Accento */
+  --accent:        rgb(var(--accent-rgb));
+  --accent-bright: rgb(var(--accent-rgb) / 0.88);
+  --accent-dim:    rgb(var(--accent-rgb) / 0.14);
+  --accent-glow:   rgb(var(--accent-rgb) / 0.30);
+
+  /* Testo */
+  --text:           rgb(var(--text-rgb));
+  --text-secondary: rgb(var(--text-rgb) / 0.58);
+  --text-faint:     rgb(var(--text-rgb) / 0.38);
+
+  /* Macro: derivati dall'accento (sovrascritti dai temi 'fixed') */
+  --macro-carbs:   rgb(var(--accent-rgb));
+  --macro-protein: rgb(var(--accent-rgb) / 0.70);
+  --macro-fat:     rgb(var(--accent-rgb) / 0.45);
+  --macro-rest:    rgb(var(--border-tint) / 0.09);
+
+  /* Stati: l'accento segna il successo, gli allarmi restano universali */
+  --ok:          rgb(var(--accent-rgb));
+  --warn:        #F2B33D;
+  --danger:      #E85B5B;
+  --muted-state: rgb(var(--text-rgb) / 0.42);
+
+  /* Tipografia */
+  --font: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+  --wordmark-spacing: 0.34em;
+
+  /* Layout */
+  --radius:      20px;
+  --radius-sm:   13px;
+  --radius-pill: 999px;
+  --max-width:    480px;
+  --nav-height:   66px;
+  --header-height: 52px;
+  --pad:          18px;
+
+  /* Motion */
+  --ease:   cubic-bezier(0.25, 0.8, 0.35, 1);
+  --t-fast: 150ms;
+  --t-med:  260ms;
+}
+
+/* ============================================================
+   TEMI
+   ============================================================ */
+
+/* --- Hyper Crimson — default. Nero, accento arancione acceso. --- */
+:root,
+[data-theme='hyper-crimson'] {
+  --bg-rgb:      10 10 11;
+  --surface-rgb: 26 26 28;
+  --accent-rgb:  255 77 28;
+  --text-rgb:    255 255 255;
+  --on-accent:   #0A0A0B;
+  --shade:       255;
+  --statusbar:   #0A0A0B;
+}
+
+/* --- Volt — nero/grigio scuro, giallo neon. --- */
+[data-theme='volt'] {
+  --bg-rgb:      13 13 13;
+  --surface-rgb: 30 30 30;
+  --accent-rgb:  212 255 0;
+  --text-rgb:    255 255 255;
+  --on-accent:   #0D0D0D;
+  --shade:       255;
+  --statusbar:   #0D0D0D;
+}
+
+/* --- Blue Void — nero profondo, blu navy.
+       Nota: il navy puro (#1A237E) su nero non raggiunge il contrasto
+       minimo leggibile; qui è alzato a un indigo che resta navy nel
+       carattere ma è visibile su testo e bordi. --- */
+[data-theme='blue-void'] {
+  --bg-rgb:      5 5 14;
+  --surface-rgb: 19 20 34;
+  --accent-rgb:  61 90 254;
+  --text-rgb:    255 255 255;
+  --on-accent:   #FFFFFF;
+  --shade:       255;
+  --statusbar:   #05050E;
+}
+
+/* --- Anthracite — antracite, testo argento, accento grigio riflettente. --- */
+[data-theme='anthracite'] {
+  --bg-rgb:      38 39 43;
+  --surface-rgb: 52 54 59;
+  --accent-rgb:  226 231 238;
+  --text-rgb:    200 204 212;
+  --on-accent:   #26272B;
+  --shade:       255;
+  --statusbar:   #26272B;
+  /* Acromatico: l'accento come macro darebbe tre grigi identici */
+  --macro-carbs:   #E2E7EE;
+  --macro-protein: #8FA3C4;
+  --macro-fat:     #5C6B85;
+}
+
+/* --- Pure Platinum — unico tema CHIARO. Accento nero metallizzato. --- */
+[data-theme='pure-platinum'] {
+  --bg-rgb:      232 232 234;
+  --surface-rgb: 255 255 255;
+  --accent-rgb:  24 24 27;
+  --text-rgb:    24 24 27;
+  --on-accent:   #FFFFFF;
+  --shade:       0;
+  --statusbar:   #18181B;
+
+  color-scheme: light;
+  /* Su fondo chiaro le superfici vanno separate dai bordi, non dalle ombre */
+  --bg-elevated: rgb(var(--surface-rgb));
+  --card-hover:  rgb(240 240 242);
+  --border:      rgb(0 0 0 / 0.12);
+  --macro-rest:  rgb(0 0 0 / 0.08);
+  --macro-carbs:   #18181B;
+  --macro-protein: #6B6B74;
+  --macro-fat:     #B4B4BC;
+  --warn:   #B57E00;
+  --danger: #C0392B;
+}
+
+/* --- Olive Aura — verde scuro, accento verde oliva. --- */
+[data-theme='olive-aura'] {
+  --bg-rgb:      24 28 21;
+  --surface-rgb: 38 44 33;
+  --accent-rgb:  154 173 74;
+  --text-rgb:    255 255 255;
+  --on-accent:   #181C15;
+  --shade:       255;
+  --statusbar:   #181C15;
+}
+
+/* --- Midnight Turquoise — nero, turchese acceso. --- */
+[data-theme='midnight-turquoise'] {
+  --bg-rgb:      5 13 13;
+  --surface-rgb: 17 30 30;
+  --accent-rgb:  29 233 214;
+  --text-rgb:    255 255 255;
+  --on-accent:   #050D0D;
+  --shade:       255;
+  --statusbar:   #050D0D;
+}
+
+/* --- Magic Ember — antracite, rosso corallo. --- */
+[data-theme='magic-ember'] {
+  --bg-rgb:      35 35 38;
+  --surface-rgb: 48 48 52;
+  --accent-rgb:  255 90 78;
+  --text-rgb:    255 255 255;
+  --on-accent:   #232326;
+  --shade:       255;
+  --statusbar:   #232326;
+}
+
+/* --- Cerulean — grigio scuro, azzurro brillante. --- */
+[data-theme='cerulean'] {
+  --bg-rgb:      22 24 28;
+  --surface-rgb: 34 37 43;
+  --accent-rgb:  46 155 255;
+  --text-rgb:    255 255 255;
+  --on-accent:   #16181C;
+  --shade:       255;
+  --statusbar:   #16181C;
+}
+
+/* --- Cargo Khaki — verde militare, accento khaki.
+       Nota: il nero come accento (da brief) sparisce sul verde militare;
+       qui l'accento è il khaki chiaro, che resta leggibile. --- */
+[data-theme='cargo-khaki'] {
+  --bg-rgb:      42 46 31;
+  --surface-rgb: 57 62 43;
+  --accent-rgb:  208 195 148;
+  --text-rgb:    255 255 255;
+  --on-accent:   #2A2E1F;
+  --shade:       255;
+  --statusbar:   #2A2E1F;
+}

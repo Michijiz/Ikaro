@@ -1,0 +1,1108 @@
+/* ============================================================
+   IKARO — Componenti: card, bottoni, nav, badge, chart, timer
+   ============================================================ */
+
+/* ---------- Card ---------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.card.tappable { cursor: pointer; }
+.card.tappable:hover { background: var(--card-hover); }
+.card.tappable:active { transform: scale(0.985); }
+
+/* ---------- Bottoni ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-radius: var(--radius-sm);
+  padding: 12px 18px;
+  transition: transform var(--t-fast) var(--ease), filter var(--t-fast) var(--ease),
+              background var(--t-fast) var(--ease);
+}
+.btn:active { transform: scale(0.96); }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 6px 20px -8px var(--accent-glow);
+}
+.btn-primary:hover { filter: brightness(1.08); }
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-secondary:hover { background: var(--card-hover); }
+
+.btn-ghost { color: var(--text-secondary); padding: 8px 10px; }
+.btn-ghost:hover { color: var(--text); }
+
+.btn-danger { color: var(--danger); }
+
+.btn-block { width: 100%; }
+.btn-sm { padding: 8px 12px; font-size: 0.85rem; border-radius: 10px; }
+
+.icon-btn {
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.icon-btn:hover { color: var(--accent); background: var(--card-hover); }
+
+/* ---------- Badge di stato ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.badge-ok     { color: var(--ok);          background: var(--accent-dim); }
+.badge-warn   { color: var(--warn);        background: rgb(242 179 61 / 0.14); }
+.badge-muted  { color: var(--muted-state); background: rgb(var(--border-tint) / 0.08); }
+
+/* ---------- Chip (goals) ---------- */
+.chip-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.chip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.chip .chip-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 5px;
+}
+.chip .chip-value { font-size: 0.95rem; font-weight: 800; }
+.chip .chip-sub { font-size: 0.72rem; color: var(--text-faint); }
+.chip-bar {
+  height: 4px; border-radius: 2px; background: var(--macro-rest);
+  overflow: hidden; margin-top: 4px;
+}
+.chip-bar > i {
+  display: block; height: 100%; background: var(--accent);
+  border-radius: 2px;
+  transition: width var(--t-med) var(--ease);
+}
+
+/* ---------- Barra progresso ---------- */
+.progress {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--macro-rest);
+  overflow: hidden;
+}
+.progress > i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  border-radius: 5px;
+  transition: width var(--t-med) var(--ease);
+}
+.progress.over > i { background: linear-gradient(90deg, var(--warn), var(--danger)); }
+
+/* ---------- Bottom navigation ---------- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgb(var(--bg-rgb) / 0.86);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: center;
+  z-index: 50;
+}
+.bottom-nav .nav-inner {
+  width: 100%;
+  max-width: var(--max-width);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: color var(--t-fast) var(--ease);
+}
+.nav-item svg { width: 21px; height: 21px; }
+.nav-item.active { color: var(--accent); }
+.nav-item:hover { color: var(--text-secondary); }
+.nav-item.active:hover { color: var(--accent-bright); }
+
+/* L'icona attiva siede su un disco tenue dell'accento */
+.nav-item .nav-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 30px;
+  border-radius: var(--radius-pill);
+  transition: background var(--t-fast) var(--ease);
+}
+.nav-item.active .nav-icon { background: var(--accent-dim); }
+
+/* ---------- Header vista ---------- */
+.view-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px; gap: 12px;
+}
+
+/* ---------- Lista workout ---------- */
+.workout-thumb {
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.chevron { color: var(--text-faint); flex-shrink: 0; }
+
+/* ---------- Strip calendario settimana ---------- */
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.week-day {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.7rem; font-weight: 600;
+}
+.week-day .num { font-size: 0.95rem; font-weight: 800; color: var(--text); }
+.week-day.has-workout {
+  background: var(--accent-dim);
+  border-color: var(--border-strong);
+}
+.week-day.has-workout .num { color: var(--accent); }
+.week-day.today { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* ---------- Serie (workout attivo) ---------- */
+.set-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  transition: border-color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
+}
+.set-row.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.set-row.done { opacity: 0.6; }
+.set-row.done .set-desc { text-decoration: line-through; color: var(--accent); }
+.set-check {
+  width: 26px; height: 26px; border-radius: 8px;
+  border: 2px solid var(--text-faint);
+  display: flex; align-items: center; justify-content: center;
+  color: transparent; flex-shrink: 0;
+  transition: all var(--t-fast) var(--ease);
+}
+.set-row.done .set-check {
+  background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+}
+
+/* ---------- Timer card ---------- */
+.timer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.timer-card { text-align: center; padding: 14px 10px; }
+.timer-value {
+  font-size: 1.7rem; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.timer-card.resting .timer-value { color: var(--accent); }
+
+/* ---------- Pasti (nutrizione) ---------- */
+.meal-emoji {
+  width: 44px; height: 44px; border-radius: 13px;
+  background: var(--bg-elevated);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; flex-shrink: 0;
+}
+.meal-items { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.meal-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+/* ---------- Ricerca alimenti ---------- */
+.search-wrap { position: relative; margin-bottom: 14px; }
+.search-wrap svg {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; color: var(--text-faint); pointer-events: none;
+}
+.search-wrap input { padding-left: 40px; }
+.food-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease);
+}
+.food-row:hover { background: rgb(var(--border-tint) / 0.03); }
+
+/* ---------- Grafici SVG ---------- */
+.chart-wrap { width: 100%; }
+.chart-wrap svg { width: 100%; height: auto; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.legend .item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-secondary); }
+.legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ---------- Modal / onboarding ---------- */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgb(var(--bg-rgb) / 0.72);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; z-index: 100;
+  animation: fadeIn var(--t-med) var(--ease);
+}
+.modal {
+  width: 100%; max-width: 360px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  animation: popIn var(--t-med) var(--ease);
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  bottom: calc(var(--nav-height) + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 120;
+  box-shadow: 0 8px 30px -8px rgb(0 0 0 / 0.6);
+  animation: toastIn var(--t-med) var(--ease);
+  white-space: nowrap;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ---------- Empty state ---------- */
+.empty {
+  text-align: center;
+  padding: 34px 16px;
+  color: var(--text-secondary);
+}
+.empty .icon { font-size: 2rem; margin-bottom: 8px; }
+
+/* ---------- Transizione vista ---------- */
+.view { animation: viewIn var(--t-med) var(--ease); }
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   Fix sizing & overflow (v2)
+   ============================================================ */
+
+/* Header vista: mai tagliato, va a capo se serve */
+.view-header { flex-wrap: wrap; }
+.view-header h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* Chip goals: testi lunghi troncati con ellissi, mai overflow */
+.chip { overflow: hidden; }
+.chip .chip-label,
+.chip .chip-value,
+.chip .chip-sub {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Schermi molto stretti: chip e timer si adattano */
+@media (max-width: 380px) {
+  .chip { padding: 10px 8px; }
+  .chip .chip-value { font-size: 0.85rem; }
+  .timer-card .btn-sm { padding: 6px 8px; font-size: 0.78rem; }
+  .week-day { padding: 8px 0; font-size: 0.62rem; }
+  .week-day .num { font-size: 0.85rem; }
+  h1 { font-size: 1.35rem; }
+}
+
+/* Timer: il valore si scala col viewport invece di traboccare */
+.timer-value { font-size: clamp(1.25rem, 8vw, 1.7rem); }
+
+/* Modali alti (editor scheda): scroll interno, mai contenuto nascosto */
+.modal { max-height: 88dvh; overflow-y: auto; }
+.modal-tall { max-width: 420px; }
+
+/* Righe pasto: nome alimento troncato, azioni sempre visibili */
+.meal-item > span:first-child {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.meal-item .row { flex-shrink: 0; }
+
+/* Bottoni tondi per il registro acqua */
+.btn-round {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  font-size: 1.4rem; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  transition: transform var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.btn-round:active { transform: scale(0.92); }
+.btn-round.primary {
+  background: var(--accent); color: var(--on-accent); border-color: transparent;
+  box-shadow: 0 6px 18px -8px var(--accent-glow);
+}
+
+/* Anteprima scheda: serie come pill compatte che vanno a capo */
+.serie-preview { display: flex; flex-wrap: wrap; gap: 6px; }
+.serie-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.78rem; font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+/* Azioni fisse sopra la bottom nav (vista Scheda) */
+.sticky-actions {
+  position: sticky;
+  bottom: calc(var(--nav-height) + 12px);
+  margin-top: 20px;
+  padding-top: 10px;
+  background: linear-gradient(to top, var(--bg) 65%, transparent);
+  z-index: 10;
+}
+
+/* Banner ripresa sessione */
+.resume-banner { border-color: var(--border-strong); background: var(--accent-dim); }
+
+/* ============================================================
+   Tema — selettore (v3)
+   ============================================================ */
+
+/* Griglia di pastiglie: ognuna è un'anteprima reale del tema,
+   dipinta con i colori del tema stesso. Nessuna label colore. */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+.theme-swatch {
+  position: relative;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+  /* Dipinta coi propri token, non con quelli del tema attivo */
+  background: rgb(var(--bg-rgb));
+  color: rgb(var(--text-rgb));
+}
+.theme-swatch:active { transform: scale(0.96); }
+.theme-swatch.selected { border-color: rgb(var(--accent-rgb)); }
+
+/* Anteprima: barra sfondo/superficie/accento */
+.theme-swatch .preview {
+  display: flex; gap: 4px; height: 26px;
+}
+.theme-swatch .preview i {
+  flex: 1; border-radius: 6px; display: block;
+}
+.theme-swatch .preview .s-card   { background: rgb(var(--surface-rgb)); flex: 1.4; }
+.theme-swatch .preview .s-accent { background: rgb(var(--accent-rgb)); flex: 0.8; }
+.theme-swatch .preview .s-text   { background: rgb(var(--text-rgb) / 0.35); flex: 0.5; }
+
+.theme-swatch .name {
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.theme-swatch .tick {
+  position: absolute; top: 8px; right: 8px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: rgb(var(--accent-rgb));
+  color: var(--on-accent);
+  display: none; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700;
+}
+.theme-swatch.selected .tick { display: flex; }
+
+/* ============================================================
+   Splash di avvio (v3)
+   Copre il boot asincrono: lo store apre IndexedDB prima che
+   le viste vengano montate. Si dissolve a boot concluso.
+   ============================================================ */
+/* La splash copre il boot asincrono. Il pointer-events:none è sempre
+   attivo dopo l'animazione: anche se il boot fallisse senza passare dalla
+   rete di sicurezza, la schermata non resterebbe murata. */
+#splash {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 300;
+  transition: opacity 260ms var(--ease);
+}
+#splash .wordmark { font-size: 1.6rem; }
+body[data-booted='true'] #splash {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Cintura e bretelle: dopo 6 secondi la splash sparisce comunque.
+   Nessun boot legittimo dura tanto; se dura, è rotto. */
+#splash { animation: splashFailsafe 0s linear 6s forwards; }
+@keyframes splashFailsafe { to { pointer-events: none; opacity: 0; } }
+
+/* ============================================================
+   Layout dashboard (v3) — componenti del nuovo design
+   ============================================================ */
+
+/* ---------- Intestazione vista ---------- */
+.page-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 18px;
+}
+.page-head .title { min-width: 0; }
+.page-head h1 { line-height: 1.05; }
+.page-head .sub {
+  font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px;
+}
+
+.avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--card); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0; color: var(--text-secondary);
+  transition: border-color var(--t-fast) var(--ease);
+}
+.avatar:hover { border-color: var(--border-strong); }
+
+/* ---------- Card: titolo interno ---------- */
+.card-title {
+  font-size: 1.12rem; font-weight: 600;
+  letter-spacing: -0.01em; color: var(--text);
+  margin-bottom: 14px;
+  line-height: 1.2;
+}
+
+/* ---------- Anello di progresso + macro ---------- */
+.ring-block { display: flex; align-items: center; gap: 16px; }
+.ring-wrap {
+  position: relative; width: 108px; flex-shrink: 0;
+}
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; line-height: 1;
+  pointer-events: none;
+}
+.ring-center .v {
+  font-size: 1.4rem; font-weight: 500;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.ring-center .l {
+  font-size: 0.68rem; color: var(--text-faint); margin-top: 3px;
+}
+
+/* Barre macro: label sopra, traccia sottile sotto */
+.macro-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 11px; }
+.macro-row { min-width: 0; }
+.macro-row .lbl {
+  font-size: 0.85rem; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.macro-row .lbl .g { color: var(--text-faint); }
+.macro-track {
+  height: 3px; border-radius: 2px;
+  background: var(--macro-rest); overflow: hidden;
+}
+.macro-track > i {
+  display: block; height: 100%; border-radius: 2px;
+  transition: width var(--t-med) var(--ease);
+}
+
+/* ---------- Riga di statistiche con divisori ---------- */
+.stat-row {
+  display: flex; align-items: stretch;
+  margin: 14px -4px 0;
+}
+.stat-cell {
+  flex: 1; min-width: 0; padding: 0 12px;
+  border-left: 1px solid var(--border);
+}
+.stat-cell:first-child { border-left: none; padding-left: 4px; }
+.stat-cell .stat { font-size: 1.15rem; }
+.stat-cell .stat .u {
+  font-size: 0.78rem; font-weight: 400; color: var(--text-faint);
+  margin-left: 2px; letter-spacing: 0;
+}
+
+/* ---------- Riga di lista (esercizi, voci) ---------- */
+.list-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 2px;
+  border-top: 1px solid var(--border);
+  font-size: 0.92rem;
+  width: 100%; text-align: left;
+}
+.list-row:first-of-type { border-top: none; }
+.list-row .grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-row .dim { color: var(--text-faint); }
+.list-group { margin-top: 12px; }
+
+/* ---------- Idratazione ---------- */
+.hydro { display: flex; align-items: center; gap: 14px; }
+.hydro .body { flex: 1; min-width: 0; }
+.hydro-top {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+.hydro-val {
+  font-size: 1.4rem; font-weight: 500;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.hydro-val .goal { color: var(--text-faint); font-size: 0.9rem; font-weight: 400; }
+.hydro-pct { font-size: 0.8rem; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.btn-add {
+  width: 44px; height: 44px; border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--card-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.btn-add:active { transform: scale(0.9); }
+.btn-add.primary {
+  background: var(--accent); color: var(--on-accent); border-color: transparent;
+}
+
+/* ---------- Percentuale accanto al badge ---------- */
+.pct-inline {
+  font-size: 0.78rem; font-weight: 600; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Segmenti (filtri periodo) ---------- */
+.segmented {
+  display: flex; gap: 3px; padding: 3px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+.segmented button {
+  flex: 1; padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--text-secondary);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.segmented button.on { background: var(--accent); color: var(--on-accent); }
+
+/* ---------- Chip alimento custom ---------- */
+.tag-custom {
+  font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 6px; border-radius: 5px;
+  background: var(--accent-dim); color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ---------- Griglia campi form ---------- */
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field > span {
+  font-size: 0.7rem; color: var(--text-faint); font-weight: 500;
+}
+
+/* ============================================================
+   Editor scheda (v4) — una riga per esercizio
+   ============================================================ */
+.ex-head, .ex-row {
+  display: grid;
+  grid-template-columns: 1fr 46px 46px 58px 30px;
+  gap: 6px;
+  align-items: center;
+}
+.ex-head {
+  margin-bottom: -4px;
+  font-size: 0.64rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-faint); text-align: center;
+}
+.ex-head span:first-child { text-align: left; }
+.ex-row input { padding: 9px 8px; }
+.ex-row input:not(:first-child) { text-align: center; padding-left: 2px; padding-right: 2px; }
+.ex-row .btn-ghost { padding: 6px 2px; }
+
+@media (max-width: 360px) {
+  .ex-head, .ex-row { grid-template-columns: 1fr 40px 40px 52px 26px; }
+  .ex-row input { font-size: 0.9rem; }
+}
+
+/* ============================================================
+   Scheda operativa (v4)
+   ============================================================ */
+
+/* Pastiglie serie: il bersaglio è ≥44px, si tocca di corsa e sudati */
+.serie-dots { display: flex; flex-wrap: wrap; gap: 8px; }
+.serie-dot {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.95rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
+              border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.serie-dot:active { transform: scale(0.88); }
+.serie-dot.done {
+  background: var(--accent); border-color: var(--accent);
+  color: var(--on-accent);
+}
+/* Serie con carico diverso dal resto: pallino d'avviso */
+.serie-dot.override::after {
+  content: ""; position: absolute; top: 5px; right: 5px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--warn);
+}
+.serie-dot.done.override::after { background: var(--on-accent); }
+
+/* Pulsazione alla spunta: conferma senza dover guardare */
+@keyframes dotPop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.serie-dot.just-done { animation: dotPop 260ms var(--ease); }
+
+/* Riga carico sotto l'esercizio */
+.carico-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px;
+}
+.carico-row input {
+  width: 84px; text-align: center;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.carico-row .hint {
+  font-size: 0.72rem; color: var(--text-faint);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.carico-row .hint b { color: var(--text-secondary); font-weight: 600; }
+
+/* Esercizio completato: si spegne senza sparire */
+.ex-card.done { border-color: var(--border-strong); }
+.ex-card.done .ex-name { color: var(--accent); }
+
+/* Storico carichi: colonne per sessione */
+.hist-table { width: 100%; font-size: 0.78rem; border-collapse: collapse; }
+.hist-table th {
+  font-size: 0.62rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-faint);
+  text-align: right; padding: 0 0 6px 8px; font-variant-numeric: tabular-nums;
+}
+.hist-table th:first-child { text-align: left; padding-left: 0; }
+.hist-table td {
+  padding: 8px 0 8px 8px; text-align: right;
+  border-top: 1px solid var(--border);
+  font-variant-numeric: tabular-nums; color: var(--text-secondary);
+}
+.hist-table td:first-child {
+  text-align: left; padding-left: 0; color: var(--text);
+  max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hist-table td.up { color: var(--accent); font-weight: 600; }
+.hist-table td.now { color: var(--text); font-weight: 600; }
+
+/* ============================================================
+   Widget dashboard (v4)
+   ============================================================ */
+
+/* --- Streak: sette caselle, una per giorno --- */
+.streak-days { display: flex; gap: 5px; }
+.streak-day {
+  flex: 1; height: 34px;
+  border-radius: 8px;
+  background: var(--macro-rest);
+  border: 1px solid transparent;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.66rem; font-weight: 600;
+  color: var(--text-faint);
+  transition: background var(--t-med) var(--ease), color var(--t-med) var(--ease);
+}
+/* Allenato: pieno. Riposo: tenue ma vivo — è parte del programma, non un buco.
+   Interrotto: spento. Futuro/prima dell'inizio: neutro. */
+.streak-day.s-trained { background: var(--accent); color: var(--on-accent); }
+.streak-day.s-rest    { background: var(--accent-dim); border-color: var(--border-strong); color: var(--accent); }
+.streak-day.s-broken  { background: var(--macro-rest); color: var(--text-faint); opacity: 0.5; }
+.streak-day.s-future  { background: var(--macro-rest); }
+.streak-day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* --- Obiettivo settimanale: tacche che si riempiono --- */
+.goal-ticks { display: flex; gap: 5px; }
+.goal-tick {
+  flex: 1; height: 10px;
+  border-radius: 3px;
+  background: var(--macro-rest);
+  transition: background var(--t-med) var(--ease);
+}
+.goal-tick.on { background: var(--accent); }
+/* Oltre l'obiettivo: il colore lo dice, il conteggio non si rompe */
+.goal-tick.extra { background: var(--warn); }
+
+/* --- Report 7 giorni: griglia, non tabella --- */
+.report {
+  display: grid;
+  grid-template-columns: 30px repeat(7, 1fr);
+  gap: 4px 3px;
+  align-items: center;
+}
+.report .rlabel {
+  font-size: 0.64rem; font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.report .rday {
+  font-size: 0.64rem; color: var(--text-faint);
+  text-align: center; font-weight: 600;
+}
+.report .rday.today { color: var(--accent); }
+.report .cell {
+  height: 22px; border-radius: 5px;
+  background: var(--macro-rest);
+  position: relative; overflow: hidden;
+  display: flex; align-items: flex-end;
+}
+.report .cell > i {
+  display: block; width: 100%;
+  background: var(--accent);
+  transition: height var(--t-med) var(--ease);
+}
+.report .cell.workout { background: transparent; align-items: center; justify-content: center; }
+.report .cell.workout.on { color: var(--accent); }
+.report .cell.workout.off { color: var(--text-faint); opacity: 0.35; }
+.report .cell.over > i { background: var(--warn); }
+.report .cell.target { box-shadow: inset 0 0 0 1px var(--border-strong); }
+
+/* --- Calorie duali --- */
+.kcal-dual { display: flex; align-items: baseline; gap: 6px; }
+.kcal-dual .big {
+  font-size: 1.9rem; font-weight: 500;
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1;
+}
+.kcal-dual .of { font-size: 0.85rem; color: var(--text-faint); }
+
+/* ============================================================
+   Onboarding (v5)
+   ============================================================ */
+.ob-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 20px
+           calc(20px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+.ob-box {
+  width: 100%; max-width: 400px;
+  animation: viewIn var(--t-med) var(--ease);
+}
+.ob-dots { display: flex; gap: 5px; margin-bottom: 22px; }
+.ob-dots i {
+  flex: 1; height: 3px; border-radius: 2px;
+  background: var(--macro-rest);
+  transition: background var(--t-med) var(--ease);
+}
+.ob-dots i.on { background: var(--accent); }
+
+.ob-box h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
+.ob-box .ob-sub { color: var(--text-secondary); font-size: 0.88rem; margin-top: 6px; }
+
+/* Scelte grandi: una riga, tutta toccabile */
+.ob-choice {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease),
+              transform var(--t-fast) var(--ease);
+}
+.ob-choice:active { transform: scale(0.98); }
+.ob-choice.on { border-color: var(--accent); background: var(--accent-dim); }
+.ob-choice .em { font-size: 1.4rem; flex-shrink: 0; }
+.ob-choice .t { min-width: 0; }
+.ob-choice .t strong { display: block; font-size: 0.95rem; }
+.ob-choice .t span { font-size: 0.75rem; color: var(--text-secondary); }
+
+/* Selettore numerico a pastiglie (allenamenti a settimana) */
+.ob-nums { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.ob-num {
+  aspect-ratio: 1; border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  font-weight: 600; font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  transition: all var(--t-fast) var(--ease);
+}
+.ob-num.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.ob-num:active { transform: scale(0.9); }
+
+/* Segmenti sesso */
+.ob-seg { display: flex; gap: 6px; }
+.ob-seg button {
+  flex: 1; padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  font-weight: 600; font-size: 0.9rem;
+  color: var(--text-secondary);
+  transition: all var(--t-fast) var(--ease);
+}
+.ob-seg button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* Riepilogo: valore calcolato + campo modificabile */
+.ob-goal {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.ob-goal:first-child { border-top: none; }
+.ob-goal .lbl { flex: 1; min-width: 0; font-size: 0.85rem; }
+.ob-goal input {
+  width: 86px; text-align: right; padding: 8px 10px;
+  font-variant-numeric: tabular-nums; font-weight: 600;
+}
+.ob-goal .u { width: 30px; font-size: 0.75rem; color: var(--text-faint); }
+
+/* Anteprime tema compatte */
+.ob-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
+
+/* ============================================================
+   Onboarding (v5)
+   ============================================================ */
+.ob-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 250;
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 20px
+           calc(20px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+.ob-box { width: 100%; max-width: 380px; }
+
+/* Barra dei passi: dice a che punto sei senza contare */
+.ob-steps { display: flex; gap: 4px; margin-bottom: 22px; }
+.ob-steps i {
+  flex: 1; height: 3px; border-radius: 2px;
+  background: var(--macro-rest);
+  transition: background var(--t-med) var(--ease);
+}
+.ob-steps i.on { background: var(--accent); }
+
+.ob-title { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.ob-sub { color: var(--text-secondary); font-size: 0.85rem; margin-top: 6px; }
+.ob-body { animation: viewIn var(--t-med) var(--ease); }
+
+/* Scelte a card: bersaglio grande, niente radio da centrare col pollice */
+.ob-choices { display: flex; flex-direction: column; gap: 8px; }
+.ob-choice {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  text-align: left;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease),
+              transform var(--t-fast) var(--ease);
+}
+.ob-choice:active { transform: scale(0.98); }
+.ob-choice.on { border-color: var(--accent); background: var(--accent-dim); }
+.ob-choice .em { font-size: 1.4rem; flex-shrink: 0; }
+.ob-choice .txt { min-width: 0; }
+.ob-choice .txt strong { display: block; font-size: 0.92rem; }
+.ob-choice .txt span { font-size: 0.75rem; color: var(--text-secondary); }
+
+/* Scelte compatte in riga (sesso, allenamenti) */
+.ob-inline { display: flex; flex-wrap: wrap; gap: 8px; }
+.ob-pill {
+  min-width: 44px; padding: 11px 14px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  font-weight: 600; font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease),
+              color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.ob-pill:active { transform: scale(0.94); }
+.ob-pill.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* Riepilogo calcolato */
+.ob-calc {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+.ob-calc .big {
+  font-size: 2rem; font-weight: 500; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+
+/* ============================================================
+   Header fisso + selettore tema (v6)
+   ============================================================ */
+.app-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 90;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: rgb(var(--bg-rgb) / 0.82);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid var(--border);
+}
+.app-header-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  height: var(--header-height);
+  padding: 0 var(--pad);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.app-header .wordmark { text-decoration: none; font-size: 1rem; }
+
+/* --- Bottone: mostra il tema attivo, non un'icona generica --- */
+.theme-menu { position: relative; }
+.theme-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 10px 7px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-secondary);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.theme-btn:hover { border-color: var(--border-strong); }
+.theme-btn .theme-dot {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgb(var(--bg-rgb)), 0 0 0 3px var(--accent-dim);
+  flex-shrink: 0;
+}
+.theme-btn .caret { transition: transform var(--t-fast) var(--ease); }
+.theme-btn[aria-expanded='true'] .caret { transform: rotate(180deg); }
+.theme-btn[aria-expanded='true'] { border-color: var(--accent); }
+
+/* --- Tendina --- */
+.theme-pop {
+  position: absolute;
+  top: calc(100% + 8px); right: 0;
+  width: 226px;
+  padding: 7px;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 44px -12px rgb(0 0 0 / 0.6);
+  animation: popIn 180ms var(--ease);
+  transform-origin: top right;
+  max-height: 62vh; overflow-y: auto;
+}
+.theme-pop-grid { display: flex; flex-direction: column; gap: 2px; }
+
+.theme-opt {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 9px;
+  border-radius: 11px;
+  text-align: left;
+  color: var(--text-secondary);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.theme-opt:hover { background: var(--card-hover); color: var(--text); }
+.theme-opt.on { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+
+/* L'anteprima si dipinge coi token GREZZI del tema: quelli derivati
+   sono risolti su :root e non ricascano sui figli. */
+.theme-opt .swatch {
+  width: 30px; height: 20px; border-radius: 6px;
+  overflow: hidden; flex-shrink: 0;
+  display: flex;
+  border: 1px solid rgb(var(--border-tint) / 0.16);
+}
+.theme-opt .swatch i { display: block; height: 100%; }
+.theme-opt .swatch .s-bg { flex: 1.6; background: rgb(var(--bg-rgb)); }
+.theme-opt .swatch .s-accent { flex: 1; background: rgb(var(--accent-rgb)); }
+.theme-opt .nm {
+  font-size: 0.86rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+@media (max-width: 360px) {
+  .theme-btn .caret { display: none; }
+  .theme-pop { width: 200px; }
+}
