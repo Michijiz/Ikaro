@@ -5,7 +5,7 @@
    revalidate). L'app è interamente statica e offline-first.
    ============================================================ */
 
-const CACHE = 'ikaro-v8';
+const CACHE = 'ikaro-v9';
 
 const SHELL = [
   '/',
