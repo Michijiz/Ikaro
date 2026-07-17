@@ -177,6 +177,7 @@ export function renderProfilo(root) {
       week:   num(root, '#p-week', 1, 14),
       weight: num(root, '#p-weight', 30, 250),
       
+      
     };
 
     // 0 è un valore legittimo per i carboidrati: non usare il falsy check
