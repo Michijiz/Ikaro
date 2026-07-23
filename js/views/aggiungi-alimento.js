@@ -4,129 +4,147 @@
      1. Recenti  — quelli che mangi davvero, in un tap
      2. Ricerca  — sul DB predefinito + i tuoi custom
      3. Crea     — quando non esiste, te lo fai
+   L'alimento finisce sul giorno passato via rotta (#/aggiungi-alimento/DATA),
+   che di default è oggi.
    ============================================================ */
 
 import {
-  getState, update, uid,
+  uid, todayKey, validDay, dayLabel,
   allFoods, saveCustomFood, deleteCustomFood, frequentFoods, findFoodByName,
-  PASTI,
+  addFoodToDay, PASTI,
 } from '../store.js';
 import {
   toast, esc, ICONS, openModal, confirmModal, parseDecimal,
 } from '../components/ui.js';
 
-export function renderAggiungiAlimento(root) {
+/* Oltre questa soglia la lista smette di essere consultabile e diventa
+   rumore: il DB ha ~1900 voci, renderizzarle tutte è inutile e lento. */
+const MAX_RISULTATI = 40;
+
+export function renderAggiungiAlimento(root, param) {
+  const giorno = validDay(param);
   let query = '';
   let recenti = [];
 
-  paint();
+  paintShell();
 
   // I recenti richiedono una lettura su IndexedDB: la vista si disegna
   // subito e loro compaiono appena pronti, senza bloccare la ricerca
-  frequentFoods(6).then(r => {
+  frequentFoods(8).then(r => {
     recenti = r.filter(x => findFoodByName(x.nome));
-    if (recenti.length) paint();
+    if (recenti.length && !query) paintResults();
   });
 
-  function paint() {
-    const foods = allFoods();
-    const results = filterFoods(query, foods);
-    const troncato = results.length === MAX_RESULTS;
-
+  /* Il guscio (header + campo di ricerca) si disegna una volta sola:
+     ridisegnarlo a ogni tasto costringeva a rimettere focus e cursore
+     a mano, ed era la parte più fragile della vista. */
+  function paintShell() {
+    const oggi = giorno === todayKey();
     root.innerHTML = `
       <header class="page-head">
         <button class="icon-btn" id="btn-back" aria-label="Indietro">${ICONS.back}</button>
-        <div class="title grow"><h1 style="font-size:1.35rem;">Aggiungi</h1></div>
+        <div class="title grow">
+          <h1 style="font-size:1.35rem;">Aggiungi</h1>
+          <div class="sub">${oggi ? 'a oggi' : `a ${dayLabel(giorno).toLowerCase()}`}</div>
+        </div>
         <button class="btn btn-secondary btn-sm" id="btn-new">${ICONS.plus} Crea</button>
       </header>
 
-      <div class="search-wrap">
-        ${ICONS.search}
-        <input id="search" type="search" placeholder="Cerca un alimento…"
-               value="${esc(query)}" autocomplete="off" enterkeyhint="search">
+      <div class="search-sticky">
+        <div class="search-wrap">
+          ${ICONS.search}
+          <input id="search" type="search" placeholder="Cerca tra ${allFoods().length} alimenti…"
+                 autocomplete="off" enterkeyhint="search">
+          <button class="search-clear" id="btn-clear" aria-label="Cancella" hidden>✕</button>
+        </div>
       </div>
 
-      ${!query && recenti.length ? `
-        <div class="eyebrow mt-16">Recenti</div>
-        <div class="card mt-8" style="padding:2px 14px;">
-          ${recenti.map(r => `
-            <div class="food-row" data-recente="${esc(r.nome)}" role="button" tabindex="0">
-              <div class="row" style="gap:10px;min-width:0;">
-                <span style="font-size:1.1rem;">${r.emoji || '🍽️'}</span>
-                <div style="min-width:0;">
-                  <strong class="small">${esc(r.nome)}</strong>
-                  <div class="faint">ultima volta ${r.grammi} g</div>
-                </div>
-              </div>
-              <span class="chevron">${ICONS.chevron}</span>
-            </div>`).join('')}
-        </div>` : ''}
-
-      <div class="eyebrow mt-16">${query ? 'Risultati' : 'Cerca'}</div>
-      <div class="card mt-8" style="padding:2px 14px;">
-        ${!query ? `
-          <div class="empty">
-            <div class="icon">🔍</div>
-            Scrivi il nome di un alimento.
-            <div class="faint mt-8">${foods.length} disponibili</div>
-          </div>
-        ` : results.length === 0 ? `
-          <div class="empty">
-            <div class="icon">🔍</div>
-            Nessun risultato per «${esc(query)}».
-            <div class="mt-8">
-              <button class="btn btn-secondary btn-sm" id="btn-new-2">${ICONS.plus} Crea «${esc(query.slice(0, 20))}»</button>
-            </div>
-          </div>
-        ` : results.map(f => `
-          <div class="food-row" data-food="${esc(f.id)}" role="button" tabindex="0">
-            <div class="row" style="gap:10px;min-width:0;">
-              <span style="font-size:1.1rem;">${f.emoji}</span>
-              <div style="min-width:0;">
-                <div class="row" style="gap:6px;min-width:0;">
-                  <strong class="small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(f.nome)}</strong>
-                  ${f.custom ? '<span class="tag-custom">tuo</span>' : ''}
-                </div>
-                <div class="faint">${f.marca ? `${esc(f.marca)} · ` : ''}porzione ${f.porzione} g</div>
-              </div>
-            </div>
-            <span class="tabular muted small" style="flex-shrink:0;">${Math.round(f.kcal * f.porzione / 100)} kcal</span>
-          </div>
-        `).join('')}
-        ${troncato ? `
-          <div class="faint" style="padding:8px 0;text-align:center;">
-            Primi ${MAX_RESULTS} risultati — scrivi qualcosa in più per restringere.
-          </div>` : ''}
-      </div>
+      <div id="results"></div>
     `;
 
-    bind();
-  }
-
-  function bind() {
     root.querySelector('#btn-back').addEventListener('click', () => {
-      location.hash = '#/nutrizione';
+      location.hash = `#/nutrizione/${giorno}`;
     });
+    root.querySelector('#btn-new').addEventListener('click', () =>
+      openFoodEditor(null, () => { setQuery(''); }));
 
     const search = root.querySelector('#search');
-    search.addEventListener('input', () => {
-      query = search.value;
-      const pos = search.selectionStart;
-      paint();
-      const s2 = root.querySelector('#search');
-      s2.focus();
-      s2.setSelectionRange(pos, pos);
+    search.addEventListener('input', () => setQuery(search.value, false));
+    root.querySelector('#btn-clear').addEventListener('click', () => {
+      setQuery('');
+      search.focus();
     });
 
-    const nuovo = () => openFoodEditor(null, () => { query = ''; paint(); });
-    root.querySelector('#btn-new').addEventListener('click', nuovo);
+    paintResults();
+  }
+
+  function setQuery(v, syncInput = true) {
+    query = v;
+    const input = root.querySelector('#search');
+    if (syncInput) input.value = v;
+    root.querySelector('#btn-clear').hidden = !v;
+    paintResults();
+  }
+
+  /* Solo la lista viene ridisegnata: il campo di ricerca non perde mai
+     il focus e non serve alcun ripristino del cursore. */
+  function paintResults() {
+    const box = root.querySelector('#results');
+    if (!box) return;
+
+    if (!query.trim()) {
+      const suggeriti = padStaples(recenti, 8);
+      box.innerHTML = `
+        ${recenti.length ? `
+          <div class="eyebrow mt-16">Usati di recente</div>
+          <div class="card mt-8 list-card">
+            ${recenti.map(r => foodRowRecente(r)).join('')}
+          </div>` : ''}
+
+        ${suggeriti.length ? `
+          <div class="eyebrow mt-16">Di base</div>
+          <div class="card mt-8 list-card">
+            ${suggeriti.map(f => foodRow(f)).join('')}
+          </div>` : ''}
+
+        <p class="faint center mt-16">Scrivi per cercare negli altri alimenti.</p>
+      `;
+    } else {
+      const results = searchFoods(query, allFoods());
+      const mostrati = results.slice(0, MAX_RISULTATI);
+      box.innerHTML = `
+        <div class="between mt-16">
+          <div class="eyebrow">Risultati</div>
+          ${results.length ? `<span class="faint">${results.length > MAX_RISULTATI
+            ? `primi ${MAX_RISULTATI} di ${results.length}` : results.length}</span>` : ''}
+        </div>
+        <div class="card mt-8 list-card">
+          ${mostrati.length === 0 ? `
+            <div class="empty">
+              <div class="icon">🔍</div>
+              Nessun risultato per «${esc(query)}».
+              <div class="mt-8">
+                <button class="btn btn-secondary btn-sm" id="btn-new-2">${ICONS.plus} Crea «${esc(query.trim().slice(0, 20))}»</button>
+              </div>
+            </div>
+          ` : mostrati.map(f => foodRow(f)).join('')}
+        </div>
+        ${results.length > MAX_RISULTATI
+          ? '<p class="faint center mt-8">Affina la ricerca per vedere il resto.</p>' : ''}
+      `;
+    }
+
+    bindRows();
+  }
+
+  function bindRows() {
     root.querySelector('#btn-new-2')?.addEventListener('click', () =>
-      openFoodEditor({ nome: query }, () => { query = ''; paint(); }));
+      openFoodEditor({ nome: query.trim() }, () => { setQuery(''); }));
 
     root.querySelectorAll('[data-food]').forEach(row => {
       const open = () => {
         const f = allFoods().find(x => x.id === row.dataset.food);
-        if (f) openDetail(f, null, paint);
+        if (f) openDetail(f, null, giorno, paintResults);
       };
       row.addEventListener('click', open);
       row.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
@@ -137,7 +155,7 @@ export function renderAggiungiAlimento(root) {
       const open = () => {
         const r = recenti.find(x => x.nome === row.dataset.recente);
         const f = findFoodByName(row.dataset.recente);
-        if (f) openDetail(f, r?.grammi, paint);
+        if (f) openDetail(f, r?.grammi, giorno, paintResults);
       };
       row.addEventListener('click', open);
       row.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
@@ -145,8 +163,40 @@ export function renderAggiungiAlimento(root) {
   }
 }
 
+/* ---------- Righe lista ---------- */
+function foodRow(f) {
+  return `
+    <div class="food-row" data-food="${esc(f.id)}" role="button" tabindex="0">
+      <div class="row" style="gap:10px;min-width:0;">
+        <span class="food-emoji">${f.emoji}</span>
+        <div style="min-width:0;">
+          <div class="row" style="gap:6px;min-width:0;">
+            <strong class="small ellipsis">${esc(f.nome)}</strong>
+            ${f.custom ? '<span class="tag-custom">tuo</span>' : ''}
+          </div>
+          <div class="faint">${Math.round(f.kcal)} kcal / 100 g · porzione ${f.porzione} g</div>
+        </div>
+      </div>
+      <span class="chevron">${ICONS.chevron}</span>
+    </div>`;
+}
+
+function foodRowRecente(r) {
+  return `
+    <div class="food-row" data-recente="${esc(r.nome)}" role="button" tabindex="0">
+      <div class="row" style="gap:10px;min-width:0;">
+        <span class="food-emoji">${r.emoji || '🍽️'}</span>
+        <div style="min-width:0;">
+          <strong class="small ellipsis">${esc(r.nome)}</strong>
+          <div class="faint">ultima volta ${r.grammi} g</div>
+        </div>
+      </div>
+      <span class="chevron">${ICONS.chevron}</span>
+    </div>`;
+}
+
 /* ---------- Dettaglio: quantità, macro live, pasto ---------- */
-function openDetail(food, grammiIniziali, onChange) {
+function openDetail(food, grammiIniziali, giorno, onChange) {
   let grammi = grammiIniziali || food.porzione;
   let pasto = suggestMeal();
 
@@ -158,6 +208,7 @@ function openDetail(food, grammiIniziali, onChange) {
   });
 
   const m = calc(grammi);
+  const oggi = giorno === todayKey();
 
   const close = openModal({
     title: `${food.emoji} ${esc(food.nome)}`,
@@ -174,14 +225,19 @@ function openDetail(food, grammiIniziali, onChange) {
         <div><div class="stat" style="font-size:1.1rem;color:var(--macro-fat);" id="dt-f">${m.f}</div><div class="stat-label">G</div></div>
       </div>
 
-      <label class="col mt-16" style="gap:5px;">
-        <span class="faint">Aggiungi a</span>
-        <select id="dt-pasto">
-          ${PASTI.map(p => `<option value="${p.id}" ${p.id === pasto ? 'selected' : ''}>${p.emoji} ${p.nome}</option>`).join('')}
-        </select>
-      </label>
+      <div class="col mt-16" style="gap:6px;">
+        <span class="faint">In quale pasto</span>
+        <div class="segmented" id="dt-pasti">
+          ${PASTI.map(p => `
+            <button type="button" data-pasto="${p.id}" class="${p.id === pasto ? 'on' : ''}">
+              ${p.emoji} ${p.nome}
+            </button>`).join('')}
+        </div>
+      </div>
 
-      <button class="btn btn-primary btn-block mt-16" id="dt-add">Aggiungi al pasto</button>
+      <button class="btn btn-primary btn-block mt-16" id="dt-add">
+        Aggiungi ${oggi ? 'a oggi' : `a ${dayLabel(giorno).toLowerCase()}`}
+      </button>
       ${food.custom ? `
         <div class="row mt-8">
           <button class="btn btn-secondary btn-sm grow" id="dt-edit">${ICONS.edit} Modifica</button>
@@ -203,21 +259,27 @@ function openDetail(food, grammiIniziali, onChange) {
         root.querySelector('#dt-f').textContent = v.f;
       });
 
-      root.querySelector('#dt-pasto').addEventListener('change', e => { pasto = e.target.value; });
+      root.querySelectorAll('[data-pasto]').forEach(b => {
+        b.addEventListener('click', () => {
+          pasto = b.dataset.pasto;
+          root.querySelectorAll('[data-pasto]').forEach(x =>
+            x.classList.toggle('on', x === b));
+        });
+      });
 
-      const aggiungi = () => {
+      const aggiungi = async () => {
         const g = parseDecimal(inp.value, 1, 5000);
         if (!g) { toast('Quantità non valida (1–5000 g)'); return; }
         const v = calc(g);
-        update(st => {
-          st.meals.pasti[pasto].push({
-            id: uid(), nome: food.nome, emoji: food.emoji,
-            grammi: Math.round(g), kcal: v.kcal, p: v.p, c: v.c, f: v.f,
-          });
+        const ok = await addFoodToDay(giorno, pasto, {
+          id: uid(), nome: food.nome, emoji: food.emoji,
+          grammi: Math.round(g), kcal: v.kcal, p: v.p, c: v.c, f: v.f,
         });
-        toast(`${food.emoji} Aggiunto a ${PASTI.find(x => x.id === pasto).nome}`);
+        if (!ok) return;
+        const nomePasto = PASTI.find(x => x.id === pasto).nome;
+        toast(`${food.emoji} ${nomePasto} · ${dayLabel(giorno).toLowerCase()}`);
         closeFn();
-        location.hash = '#/nutrizione';
+        location.hash = `#/nutrizione/${giorno}`;
       };
 
       root.querySelector('#dt-add').addEventListener('click', aggiungi);
@@ -357,49 +419,41 @@ function openFoodEditor(existing, onDone) {
 
 /* ---------- helper ---------- */
 
-/** Quanti risultati disegnare al massimo. Vedi filterFoods. */
-const MAX_RESULTS = 60;
-
-const norm = s => String(s || '').toLowerCase()
-  .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 /**
- * Filtro insensibile a maiuscole e accenti, ordinato per pertinenza
- * e tagliato a MAX_RESULTS.
- *
- * Il tetto non è una scorciatoia: il catalogo ha migliaia di voci e la
- * vista si ridisegna a ogni tasto premuto. Senza limite, `innerHTML` con
- * duemila righe rende la ricerca inutilizzabile sul telefono — che è
- * esattamente il posto in cui la si usa.
- *
- * Ordine: i tuoi alimenti prima di tutto, poi chi inizia con la query
- * (cerchi "pollo", vuoi "Pollo", non "Insalata di pollo"), poi il resto,
- * a parità di rango per nome più corto: il generico prima del prodotto.
+ * Ricerca ordinata per pertinenza, non per posizione nel catalogo:
+ * chi scrive "pol" vuole "Pollo", non "Insalata di finocchi e pollo".
+ * 0 = inizia con la query, 1 = una parola inizia con la query, 2 = la contiene.
+ * I custom vincono i pari merito: sono roba tua, li cerchi più spesso.
  */
-function filterFoods(q, foods) {
+export function searchFoods(q, foods) {
   const nq = norm(q.trim());
   if (!nq) return [];
-
   const out = [];
   for (const f of foods) {
     const n = norm(f.nome);
     const i = n.indexOf(nq);
-    if (i === -1) {
-      // Seconda chance sul marchio: "Barilla" deve trovare qualcosa
-      if (!f.marca || !norm(f.marca).includes(nq)) continue;
-      out.push({ f, rank: 3 });
-      continue;
-    }
-    out.push({ f, rank: f.custom ? 0 : (i === 0 ? 1 : 2) });
+    if (i < 0) continue;
+    const rank = i === 0 ? 0 : (n[i - 1] === ' ' || n[i - 1] === "'" ? 1 : 2);
+    out.push({ f, rank });
   }
+  return out
+    .sort((a, b) =>
+      a.rank - b.rank ||
+      (b.f.custom ? 1 : 0) - (a.f.custom ? 1 : 0) ||
+      a.f.nome.length - b.f.nome.length ||
+      a.f.nome.localeCompare(b.f.nome, 'it'))
+    .map(x => x.f);
+}
 
-  out.sort((a, b) =>
-    a.rank - b.rank ||
-    a.f.nome.length - b.f.nome.length ||
-    a.f.nome.localeCompare(b.f.nome, 'it')
-  );
-
-  return out.slice(0, MAX_RESULTS).map(x => x.f);
+/**
+ * Riempie la lista "Di base" con alimenti del catalogo, saltando quelli
+ * già mostrati fra i recenti: con lo storico vuoto la vista non è nuda.
+ */
+function padStaples(recenti, quanti) {
+  const visti = new Set(recenti.map(r => r.nome));
+  return allFoods().filter(f => !f.custom && !visti.has(f.nome)).slice(0, quanti);
 }
 
 /** Suggerisce il pasto in base all'ora corrente. */
