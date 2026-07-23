@@ -15,13 +15,9 @@
    ============================================================ */
 
 import * as db from './db.js';
-import {
-  loadCatalogs, catalogExercises, catalogExerciseById, catalogFoods,
-  matchExerciseByName, slugify, normalizeName,
-} from './catalog.js';
 
 export const STORAGE_KEY = 'ikaro-state-v2';
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 6;
 
 /* ---------- Utility date (funzioni pure) ---------- */
 
@@ -38,6 +34,31 @@ export function dateKey(d) {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const g = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${g}`;
+}
+
+/** Somma giorni a una chiave YYYY-MM-DD restando sul fuso locale. */
+export function shiftDay(key, delta) {
+  const [y, m, g] = key.split('-').map(Number);
+  const d = new Date(y, m - 1, g);
+  d.setDate(d.getDate() + delta);
+  return dateKey(d);
+}
+
+/** Chiave valida e non futura, altrimenti oggi. */
+export function validDay(raw) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw || '')) return todayKey();
+  return raw > todayKey() ? todayKey() : raw;
+}
+
+/** Etichetta leggibile: "Oggi", "Ieri", altrimenti "Sab 18 luglio". */
+export function dayLabel(key) {
+  if (key === todayKey()) return 'Oggi';
+  if (key === shiftDay(todayKey(), -1)) return 'Ieri';
+  const [y, m, g] = key.split('-').map(Number);
+  const d = new Date(y, m - 1, g).toLocaleDateString('it-IT', {
+    weekday: 'short', day: 'numeric', month: 'long',
+  });
+  return d.charAt(0).toUpperCase() + d.slice(1);
 }
 
 /** Giorno della settimana 0=Lunedì … 6=Domenica (convenzione italiana). */
@@ -108,6 +129,11 @@ export const PASTI = [
 
 /* ---------- Temi disponibili (i valori CSS stanno in variables.css) ---------- */
 
+/** Contenitore pasti vuoto, derivato da PASTI: una sola fonte di verità. */
+export function emptyPasti() {
+  return Object.fromEntries(PASTI.map(p => [p.id, []]));
+}
+
 export const THEMES = [
   { id: 'hyper-crimson',      nome: 'Hyper Crimson' },
   { id: 'volt',               nome: 'Volt' },
@@ -149,7 +175,7 @@ function buildSeedState() {
     },
     workouts: [],
     weights: [],
-    meals: { date: todayKey(), pasti: { colazione: [], pranzo: [], spuntino: [], cena: [] } },
+    meals: { date: todayKey(), pasti: emptyPasti() },
     water: { date: todayKey(), litri: 0 },
     maxes: { squat: 0, panca: 0, stacco: 0, prev: { squat: 0, panca: 0, stacco: 0 } },
     activityDates: [],
@@ -167,8 +193,6 @@ const listeners = new Set();
 let workoutCache = [];
 /** Cache sincrona degli alimenti custom (fonte di verità: IndexedDB). */
 let customFoods = [];
-/** Cache sincrona degli esercizi custom (fonte di verità: IndexedDB). */
-let customExercises = [];
 /** Record migrati da localStorage e non ancora scritti su IDB. */
 let pendingMigration = null;
 
@@ -196,14 +220,6 @@ export async function initStore() {
 
     workoutCache = (await db.getAll(db.STORES.WORKOUTS)) || [];
     customFoods = (await db.getAll(db.STORES.FOODS)) || [];
-    customExercises = (await db.getAll(db.STORES.EXERCISES)) || [];
-
-    // Il catalogo va caricato PRIMA della migrazione degli id: senza,
-    // ogni esercizio esistente finirebbe custom e lo storico si
-    // frammenterebbe in due cataloghi paralleli.
-    await loadCatalogs();
-    await migrateExerciseIds();
-
     ready = true;
     return { ok: true };
   } catch (e) {
@@ -211,10 +227,6 @@ export async function initStore() {
     // L'app resta usabile: lo storico semplicemente non persiste
     workoutCache = pendingMigration?.workoutHistory || [];
     customFoods = [];
-    customExercises = [];
-    // Senza IDB il catalogo prova comunque la rete: la ricerca esercizi
-    // continua a funzionare, semplicemente si riscarica ogni avvio
-    await loadCatalogs();
     ready = true;
     return { ok: false, error: e };
   }
@@ -353,21 +365,6 @@ function migrate(s) {
     v = 6;
   }
 
-  if (v === 6) {
-    /* Gli esercizi smettono di essere identificati dal nome scritto a mano.
-       Fino a qui lo storico dei carichi era indicizzato per stringa: bastava
-       correggere un refuso in una scheda per perdere mesi di sovraccarico
-       progressivo, e "Panca piana" e "panca piana " erano due esercizi.
-       Da ora ognuno ha un `exId` stabile, preso dal catalogo o creato come
-       custom.
-
-       Il lavoro vero (migrateExerciseIds) NON si fa qui: serve il catalogo,
-       che arriva via rete ed è async, mentre questa catena è sincrona.
-       Qui si alza solo la bandiera. */
-    s.exIdsMigrated = false;
-    v = 7;
-  }
-
   s.schemaVersion = v;
 
   // Rete di sicurezza per campi mancanti (stati salvati a metà, import, ecc.)
@@ -489,7 +486,7 @@ export async function ensureDailyReset() {
   update(s => {
     if (s.water.date !== t) s.water = { date: t, litri: 0 };
     if (s.meals.date !== t) {
-      s.meals = { date: t, pasti: { colazione: [], pranzo: [], spuntino: [], cena: [] } };
+      s.meals = { date: t, pasti: emptyPasti() };
     }
   });
 }
@@ -521,6 +518,77 @@ export async function nutritionLastDays(n = 7) {
     totali: { ...tot, litri: state.water.litri },
   });
   return past;
+}
+
+/* ---------- Lettura/scrittura di un singolo giorno ---------- */
+
+/**
+ * Un giorno qualsiasi in forma uniforme. Oggi arriva dallo stato live,
+ * gli altri da IndexedDB; se il giorno non esiste torna un guscio vuoto,
+ * così le viste non devono distinguere i due casi.
+ * @param {string} data YYYY-MM-DD
+ */
+export async function nutritionDay(data) {
+  if (data === todayKey()) {
+    return {
+      data,
+      pasti: state.meals.pasti,
+      totali: { ...dayTotals(state), litri: state.water.litri },
+      oggi: true,
+    };
+  }
+  let rec = null;
+  try {
+    rec = await db.get(db.STORES.NUTRITION, data);
+  } catch (e) {
+    console.warn('IKARO: lettura del giorno fallita.', e);
+  }
+  const pasti = { ...emptyPasti(), ...(rec?.pasti || {}) };
+  return { data, pasti, totali: rec?.totali || totalsFromPasti(pasti), oggi: false };
+}
+
+/** Persiste un giorno passato ricalcolando i totali. Vuoto ⇒ record rimosso. */
+async function writePastDay(data, pasti, litri = 0) {
+  const tot = totalsFromPasti(pasti);
+  const vuoto = tot.kcal === 0 && !litri &&
+    Object.values(pasti).every(items => items.length === 0);
+  try {
+    if (vuoto) await db.del(db.STORES.NUTRITION, data);
+    else await db.put(db.STORES.NUTRITION, { data, pasti, totali: { ...tot, litri } });
+  } catch (e) {
+    console.error('IKARO: scrittura del giorno fallita.', e);
+    notifyError('Impossibile salvare su quel giorno.');
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Aggiunge un alimento a un pasto di un giorno qualsiasi (oggi compreso).
+ * @param {string} data YYYY-MM-DD
+ */
+export async function addFoodToDay(data, pastoId, item) {
+  if (!PASTI.some(p => p.id === pastoId)) return false;
+  if (data === todayKey()) {
+    update(st => { st.meals.pasti[pastoId].push(item); });
+    return true;
+  }
+  const giorno = await nutritionDay(data);
+  giorno.pasti[pastoId] = [...(giorno.pasti[pastoId] || []), item];
+  return writePastDay(data, giorno.pasti, giorno.totali?.litri || 0);
+}
+
+/** Rimuove un alimento da un pasto di un giorno qualsiasi. */
+export async function removeFoodFromDay(data, pastoId, itemId) {
+  if (data === todayKey()) {
+    update(st => {
+      st.meals.pasti[pastoId] = st.meals.pasti[pastoId].filter(x => x.id !== itemId);
+    });
+    return true;
+  }
+  const giorno = await nutritionDay(data);
+  giorno.pasti[pastoId] = (giorno.pasti[pastoId] || []).filter(x => x.id !== itemId);
+  return writePastDay(data, giorno.pasti, giorno.totali?.litri || 0);
 }
 
 /* ---------- Storico allenamenti (cache sincrona + IndexedDB) ---------- */
@@ -577,19 +645,9 @@ export function recentSessions(limit = 20) {
 
 /* ---------- Alimenti custom ---------- */
 
-/**
- * Alimenti disponibili: i tuoi, poi il catalogo.
- *
- * FOOD_DB resta come rete di sicurezza, non come sorgente: se il catalogo
- * c'è, i suoi ~40 alimenti sarebbero solo doppioni. Se il catalogo manca
- * (primo avvio offline, download fallito) l'app non deve però mostrarti
- * una lista vuota.
- */
+/** Alimenti predefiniti + creati dall'utente. */
 export function allFoods() {
-  const catalogo = catalogFoods();
-  return catalogo.length
-    ? [...customFoods, ...catalogo]
-    : [...customFoods, ...FOOD_DB];
+  return [...customFoods, ...FOOD_DB];
 }
 
 export function getCustomFoods() {
@@ -622,149 +680,22 @@ export async function deleteCustomFood(id) {
   }
 }
 
-/* ---------- Esercizi: catalogo + custom ---------- */
-
-/** Catalogo ufficiale + esercizi creati dall'utente (questi per primi). */
-export function allExercises() {
-  return [...customExercises, ...catalogExercises()];
-}
-
-export function getCustomExercises() {
-  return customExercises;
-}
-
-/** Esercizio (custom o di catalogo) per id, o null. */
-export function exerciseById(id) {
-  return customExercises.find(e => e.id === id) || catalogExerciseById(id);
-}
-
-/**
- * Nome da mostrare per un esercizio di una scheda o di uno storico.
- * L'id è la verità, ma i record vecchi hanno solo il nome: il fallback
- * non è pigrizia, è l'unico modo di leggere lo storico pre-migrazione.
- */
-export function exerciseName(ref) {
-  const ex = ref.exId ? exerciseById(ref.exId) : null;
-  return ex ? ex.nome : (ref.nome || '');
-}
-
-/** Crea o aggiorna un esercizio custom. */
-export async function saveCustomExercise(ex) {
-  const rec = {
-    ...ex,
-    id: ex.id || `cx_${slugify(ex.nome) || uid()}`,
-    custom: true,
-  };
-  const i = customExercises.findIndex(x => x.id === rec.id);
-  if (i >= 0) customExercises[i] = rec; else customExercises.unshift(rec);
-  emit();
-  try {
-    await db.put(db.STORES.EXERCISES, rec);
-  } catch (e) {
-    console.error('IKARO: salvataggio esercizio fallito.', e);
-    notifyError('Esercizio non salvato.');
-  }
-  return rec;
-}
-
-/**
- * Elimina un esercizio custom.
- * Le schede che lo usano NON vengono toccate: continuano a mostrarlo
- * col nome salvato. Svuotare una scheda perché si è ripulito il catalogo
- * sarebbe una sorpresa sgradevole.
- */
-export async function deleteCustomExercise(id) {
-  customExercises = customExercises.filter(e => e.id !== id);
-  emit();
-  try {
-    await db.del(db.STORES.EXERCISES, id);
-  } catch (e) {
-    console.error('IKARO: eliminazione esercizio fallita.', e);
-  }
-}
-
-/**
- * Migrazione v7, parte async: assegna un `exId` a ogni esercizio delle
- * schede (e della sessione in corso) partendo dal nome scritto a mano.
- *
- * Match esatto su nome o alias del catalogo. Ciò che non combacia diventa
- * un esercizio custom col nome originale: nessuno perde una riga della
- * propria scheda perché non era in catalogo.
- *
- * Lo storico su IndexedDB non viene riscritto: i record vecchi restano
- * senza exId e si continuano a leggere per nome (vedi exerciseHistory).
- * Riscrivere anni di sessioni per un campo derivabile è rischio gratuito.
- */
-async function migrateExerciseIds() {
-  if (state.exIdsMigrated) return;
-
-  const nuoviCustom = [];
-
-  /** Risolve un nome in un id, creando l'esercizio custom se serve. */
-  const risolvi = nome => {
-    const trovato = matchExerciseByName(nome);
-    if (trovato) return { exId: trovato.id, nome: trovato.nome };
-
-    const id = `cx_${slugify(nome) || uid()}`;
-    const giaVisto = customExercises.some(e => e.id === id)
-      || nuoviCustom.some(e => e.id === id);
-    if (!giaVisto) {
-      nuoviCustom.push({ id, nome, gruppo: null, attrezzo: null, alias: [], custom: true });
-    }
-    return { exId: id, nome };
-  };
-
-  let tocco = false;
-
-  (state.workouts || []).forEach(w => {
-    (w.esercizi || []).forEach(e => {
-      if (e.exId || !e.nome) return;
-      const r = risolvi(e.nome);
-      e.exId = r.exId;
-      e.nome = r.nome; // il nome si normalizza a quello ufficiale del catalogo
-      tocco = true;
-    });
-  });
-
-  // Una sessione a metà non va persa: prende gli id come le schede
-  (state.session?.esercizi || []).forEach(e => {
-    if (e.exId || !e.nome) return;
-    const r = risolvi(e.nome);
-    e.exId = r.exId;
-    e.nome = r.nome;
-    tocco = true;
-  });
-
-  if (nuoviCustom.length) {
-    customExercises = [...nuoviCustom, ...customExercises];
-    try {
-      await db.putMany(db.STORES.EXERCISES, nuoviCustom);
-    } catch (e) {
-      console.error('IKARO: esercizi custom non salvati.', e);
-    }
-  }
-
-  // La bandiera si alza solo se il catalogo c'era davvero: se il primo
-  // avvio è offline, riproviamo la prossima volta invece di cristallizzare
-  // tutta la scheda in esercizi custom che poi resterebbero doppioni.
-  if (catalogExercises().length > 0) {
-    state.exIdsMigrated = true;
-    persist(state);
-    if (tocco) emit();
-  }
-}
-
 /* ---------- Selettori derivati (funzioni pure sullo stato) ---------- */
 
-/** Totali nutrizionali del giorno corrente: kcal e macro. */
-export function dayTotals(s = state) {
+/** Totali (kcal e macro) di un qualsiasi contenitore di pasti. */
+export function totalsFromPasti(pasti) {
   const tot = { kcal: 0, p: 0, c: 0, f: 0 };
-  Object.values(s.meals.pasti).forEach(items => items.forEach(it => {
+  Object.values(pasti || {}).forEach(items => (items || []).forEach(it => {
     tot.kcal += it.kcal; tot.p += it.p; tot.c += it.c; tot.f += it.f;
   }));
   tot.kcal = Math.round(tot.kcal);
   tot.p = Math.round(tot.p); tot.c = Math.round(tot.c); tot.f = Math.round(tot.f);
   return tot;
+}
+
+/** Totali nutrizionali del giorno corrente: kcal e macro. */
+export function dayTotals(s = state) {
+  return totalsFromPasti(s.meals.pasti);
 }
 
 /** Streak: giorni consecutivi con attività, calcolato a ritroso da oggi. */
@@ -929,8 +860,8 @@ export function numSerie(ex) {
  * Alimenta il confronto per il sovraccarico progressivo.
  * @returns {Array<{data:string, carico:number, reps:number, serie:number}>}
  */
-export function caricoHistory(ref, limit = 5) {
-  return exerciseHistory(ref, state, limit).map(h => {
+export function caricoHistory(nomeEsercizio, limit = 5) {
+  return exerciseHistory(nomeEsercizio, state, limit).map(h => {
     const carichi = h.serie.map(x => Number(x.carico) || 0);
     return {
       data: h.data,
@@ -941,27 +872,12 @@ export function caricoHistory(ref, limit = 5) {
   });
 }
 
-/**
- * Storico serie di un esercizio, dalla sessione più recente.
- * @param {{exId?:string, nome?:string}|string} ref esercizio o suo nome
- *
- * L'id è il criterio primario, ma le sessioni salvate prima della v7 hanno
- * solo il nome: si confrontano anche quelli, normalizzati. È così che anni
- * di storico restano leggibili senza riscrivere IndexedDB.
- */
-export function exerciseHistory(ref, s = state, limit = 3) {
-  const target = typeof ref === 'string' ? { nome: ref } : (ref || {});
-  const exId = target.exId || null;
-  const nomeNorm = normalizeName(target.nome || (exId ? exerciseName(target) : ''));
-
-  const combacia = e =>
-    (exId && e.exId === exId) ||
-    (!e.exId && nomeNorm && normalizeName(e.nome) === nomeNorm);
-
+/** Storico serie di un esercizio (per nome), dalla sessione più recente. */
+export function exerciseHistory(nomeEsercizio, s = state, limit = 3) {
   const out = [];
   const sorted = [...workoutCache].sort((a, b) => b.data.localeCompare(a.data));
   for (const h of sorted) {
-    const e = (h.esercizi || []).find(combacia);
+    const e = h.esercizi.find(x => x.nome === nomeEsercizio);
     if (e) out.push({ data: h.data, serie: e.serie });
     if (out.length >= limit) break;
   }
@@ -1119,11 +1035,10 @@ export function snoozeBackup(giorni = 30) {
  * È l'unica difesa contro la cancellazione dello storage da parte di iOS.
  */
 export async function exportAll() {
-  const [nutrition, workouts, foods, exercises] = await Promise.all([
+  const [nutrition, workouts, foods] = await Promise.all([
     db.getAll(db.STORES.NUTRITION).catch(() => []),
     db.getAll(db.STORES.WORKOUTS).catch(() => []),
     db.getAll(db.STORES.FOODS).catch(() => []),
-    db.getAll(db.STORES.EXERCISES).catch(() => []),
   ]);
 
   // Segna quando: è ciò su cui si regge il promemoria
@@ -1141,7 +1056,6 @@ export async function exportAll() {
     nutritionDays: nutrition || [],
     workoutHistory: workouts || [],
     customFoods: foods || [],
-    customExercises: exercises || [],
   };
 }
 
@@ -1169,15 +1083,11 @@ export async function importAll(payload) {
     const wh = payload.workoutHistory?.length ? payload.workoutHistory : legacy;
     if (wh.length) await db.putMany(db.STORES.WORKOUTS, wh);
     if (payload.customFoods?.length) await db.putMany(db.STORES.FOODS, payload.customFoods);
-    if (payload.customExercises?.length) await db.putMany(db.STORES.EXERCISES, payload.customExercises);
 
     state = incoming;
     persist(state);
     workoutCache = (await db.getAll(db.STORES.WORKOUTS)) || [];
     customFoods = (await db.getAll(db.STORES.FOODS)) || [];
-    customExercises = (await db.getAll(db.STORES.EXERCISES)) || [];
-    // Un backup pre-v7 porta schede senza exId: vanno rimigrate
-    await migrateExerciseIds();
     applyTheme();
     emit();
     return { ok: true };
