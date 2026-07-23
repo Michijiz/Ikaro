@@ -1115,6 +1115,7 @@ body[data-booted='true'] #splash {
 .hero {
   border: 1px solid var(--border-strong);
   background:
+    radial-gradient(120% 120% at 100% 0%, var(--accent-dim) 0%, transparent 62%),
     var(--card);
 }
 .hero .eyebrow { color: var(--accent); margin-bottom: 6px; }
@@ -1235,3 +1236,40 @@ body[data-booted='true'] #splash {
   cursor: default;
 }
 .serie-dot[disabled]:active { transform: none; }
+
+/* ---------- Navigazione giorno (Nutrizione) ---------- */
+.day-nav {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+.day-nav-label {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 4px 8px; line-height: 1.2;
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+}
+.day-nav-label strong { font-size: 0.95rem; }
+.day-nav-label span { font-size: 0.7rem; }
+.day-nav .icon-btn[disabled] { opacity: 0.3; pointer-events: none; }
+
+/* ---------- Ricerca alimenti: barra fissa e lista ---------- */
+.search-sticky {
+  position: sticky; top: 0; z-index: 5;
+  padding-top: 8px;
+  background: var(--bg);
+}
+.search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px; border-radius: 50%;
+  color: var(--text-faint); font-size: 0.85rem;
+}
+.list-card { padding: 2px 14px; }
+.list-card .food-row:last-child { border-bottom: none; }
+.food-emoji { font-size: 1.1rem; flex-shrink: 0; }
+.ellipsis { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Selettore pasto nel dettaglio alimento: quattro voci su una riga */
+#dt-pasti button { font-size: 0.7rem; padding: 7px 4px; white-space: nowrap; }
