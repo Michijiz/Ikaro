@@ -2,93 +2,128 @@
    IKARO — Vista Nutrizione
    Stesso blocco Calorie della Home (anello + macro), poi i
    quattro pasti espandibili con rimozione dei singoli alimenti.
+   Il giorno è navigabile: oggi arriva dallo stato live, i giorni
+   passati dallo storico su IndexedDB.
    ============================================================ */
 
-import { getState, update, subscribe, dayTotals, PASTI } from '../store.js';
+import {
+  getState, subscribe, todayKey, shiftDay, validDay, dayLabel, PASTI,
+  nutritionDay, removeFoodFromDay,
+} from '../store.js';
 import { progressRing } from '../components/donut-chart.js';
 import { toast, esc, ICONS } from '../components/ui.js';
 
-export function renderNutrizione(root) {
+export function renderNutrizione(root, param) {
   // Lo stato di espansione è locale alla visita, non globale al modulo
   const expanded = new Set();
-  const unsub = subscribe(() => paint(root, expanded));
-  paint(root, expanded);
+  let giorno = validDay(param);
+
+  // Le modifiche live riguardano solo oggi: sugli altri giorni scriviamo
+  // direttamente su IndexedDB e ridisegniamo a mano.
+  const unsub = subscribe(() => { if (giorno === todayKey()) paint(); });
+  paint();
   return () => unsub();
-}
 
-function paint(root, expanded) {
-  const s = getState();
-  const tot = dayTotals(s);
-  const g = s.profile.goals;
-  const rimanenti = g.calories - tot.kcal;
-  const oltre = rimanenti < 0;
+  function setGiorno(nuovo) {
+    if (nuovo > todayKey()) return;            // il futuro non si logga
+    giorno = nuovo;
+    expanded.clear();
+    // replaceState non scatena hashchange: niente remount, ma l'URL resta
+    // coerente se ricarichi o torni indietro dalla schermata di aggiunta.
+    history.replaceState(null, '', `#/nutrizione/${giorno}`);
+    paint();
+  }
 
-  root.innerHTML = `
-    <header class="page-head">
-      <div class="title">
-        <h1>Nutrizione</h1>
-        <div class="sub">${dataOggi()}</div>
+  async function paint() {
+    const s = getState();
+    const d = await nutritionDay(giorno);
+    if (d.data !== giorno) return;             // giorno cambiato nel frattempo
+    const tot = d.totali;
+    const g = s.profile.goals;
+    const rimanenti = g.calories - tot.kcal;
+    const oltre = rimanenti < 0;
+    const oggi = giorno === todayKey();
+
+    root.innerHTML = `
+      <header class="page-head">
+        <div class="title">
+          <h1>Nutrizione</h1>
+          <div class="sub">${dayLabel(giorno)}</div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-add">${ICONS.plus} Alimento</button>
+      </header>
+
+      <div class="day-nav">
+        <button class="icon-btn" id="day-prev" aria-label="Giorno precedente">${ICONS.back}</button>
+        <button class="day-nav-label" id="day-today" ${oggi ? 'disabled' : ''}>
+          <strong>${dayLabel(giorno)}</strong>
+          <span class="faint">${oggi ? 'stai loggando oggi' : 'tocca per tornare a oggi'}</span>
+        </button>
+        <button class="icon-btn" id="day-next" aria-label="Giorno successivo" ${oggi ? 'disabled' : ''}>${ICONS.chevron}</button>
       </div>
-      <button class="btn btn-primary btn-sm" id="btn-add">${ICONS.plus} Alimento</button>
-    </header>
 
-    <div class="card">
-      <div class="card-title">Calorie</div>
-      <div class="ring-block">
-        <div class="ring-wrap">
-          ${progressRing(tot.kcal, g.calories)}
-          <div class="ring-center">
-            <span class="v" style="${oltre ? 'color:var(--warn);' : ''}">${fmtInt(Math.abs(rimanenti))}</span>
-            <span class="l">${oltre ? 'in eccesso' : 'rimanenti'}</span>
+      <div class="card mt-16">
+        <div class="card-title">Calorie</div>
+        <div class="ring-block">
+          <div class="ring-wrap">
+            ${progressRing(tot.kcal, g.calories)}
+            <div class="ring-center">
+              <span class="v" style="${oltre ? 'color:var(--warn);' : ''}">${fmtInt(Math.abs(rimanenti))}</span>
+              <span class="l">${oltre ? 'in eccesso' : 'rimanenti'}</span>
+            </div>
+          </div>
+          <div class="macro-list">
+            ${macroRow('Carbo', tot.c, g.carbs, 'var(--macro-carbs)')}
+            ${macroRow('Proteine', tot.p, g.protein, 'var(--macro-protein)')}
+            ${macroRow('Grassi', tot.f, g.fat, 'var(--macro-fat)')}
           </div>
         </div>
-        <div class="macro-list">
-          ${macroRow('Carbo', tot.c, g.carbs, 'var(--macro-carbs)')}
-          ${macroRow('Proteine', tot.p, g.protein, 'var(--macro-protein)')}
-          ${macroRow('Grassi', tot.f, g.fat, 'var(--macro-fat)')}
+        <div class="stat-row">
+          ${statCell(fmtInt(tot.kcal), 'Assunte', 'kcal')}
+          ${statCell(fmtInt(g.calories), 'Obiettivo', 'kcal')}
+          ${statCell(`${pct(tot.kcal, g.calories)}`, 'Del target', '%')}
         </div>
       </div>
-      <div class="stat-row">
-        ${statCell(fmtInt(tot.kcal), 'Assunte', 'kcal')}
-        ${statCell(fmtInt(g.calories), 'Obiettivo', 'kcal')}
-        ${statCell(`${pct(tot.kcal, g.calories)}`, 'Del target', '%')}
+
+      <div class="col mt-16" style="gap:12px;">
+        ${PASTI.map(p => mealCard(p, d.pasti, expanded)).join('')}
       </div>
-    </div>
 
-    <div class="col mt-16" style="gap:12px;">
-      ${PASTI.map(p => mealCard(p, s, expanded)).join('')}
-    </div>
+      <button class="btn btn-primary btn-block mt-16" id="btn-add-2">${ICONS.plus} Aggiungi alimento</button>
+    `;
 
-    <button class="btn btn-primary btn-block mt-16" id="btn-add-2">${ICONS.plus} Aggiungi alimento</button>
-  `;
+    const goAdd = () => { location.hash = `#/aggiungi-alimento/${giorno}`; };
+    root.querySelector('#btn-add').addEventListener('click', goAdd);
+    root.querySelector('#btn-add-2').addEventListener('click', goAdd);
 
-  const goAdd = () => { location.hash = '#/aggiungi-alimento'; };
-  root.querySelector('#btn-add').addEventListener('click', goAdd);
-  root.querySelector('#btn-add-2').addEventListener('click', goAdd);
+    root.querySelector('#day-prev').addEventListener('click', () => setGiorno(shiftDay(giorno, -1)));
+    root.querySelector('#day-next').addEventListener('click', () => setGiorno(shiftDay(giorno, +1)));
+    root.querySelector('#day-today').addEventListener('click', () => setGiorno(todayKey()));
 
-  root.querySelectorAll('[data-meal]').forEach(card => {
-    card.querySelector('.meal-head').addEventListener('click', () => {
-      const id = card.dataset.meal;
-      expanded.has(id) ? expanded.delete(id) : expanded.add(id);
-      paint(root, expanded);
-    });
-  });
-
-  root.querySelectorAll('[data-remove]').forEach(b => {
-    b.addEventListener('click', e => {
-      e.stopPropagation();
-      const [mealId, itemId] = b.dataset.remove.split('|');
-      update(st => {
-        st.meals.pasti[mealId] = st.meals.pasti[mealId].filter(x => x.id !== itemId);
+    root.querySelectorAll('[data-meal]').forEach(card => {
+      card.querySelector('.meal-head').addEventListener('click', () => {
+        const id = card.dataset.meal;
+        expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+        paint();
       });
-      toast('Alimento rimosso');
     });
-  });
+
+    root.querySelectorAll('[data-remove]').forEach(b => {
+      b.addEventListener('click', async e => {
+        e.stopPropagation();
+        const [mealId, itemId] = b.dataset.remove.split('|');
+        const ok = await removeFoodFromDay(giorno, mealId, itemId);
+        if (!ok) return;
+        toast('Alimento rimosso');
+        if (giorno !== todayKey()) paint();     // su oggi ci pensa subscribe
+      });
+    });
+  }
 }
 
 /* ---------- Card singolo pasto ---------- */
-function mealCard(p, s, expanded) {
-  const items = s.meals.pasti[p.id] || [];
+function mealCard(p, pasti, expanded) {
+  const items = pasti[p.id] || [];
   const kcal = Math.round(items.reduce((n, x) => n + x.kcal, 0));
   const desc = items.length === 0
     ? '<span class="faint">Niente ancora</span>'
@@ -145,8 +180,3 @@ function statCell(v, label, unit = '') {
 
 function pct(v, max) { return max ? Math.min(100, Math.round(v / max * 100)) : 0; }
 function fmtInt(n) { return Math.round(n).toLocaleString('it-IT'); }
-
-function dataOggi() {
-  const d = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-  return d.charAt(0).toUpperCase() + d.slice(1);
-}
