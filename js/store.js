@@ -17,7 +17,7 @@
 import * as db from './db.js';
 
 export const STORAGE_KEY = 'ikaro-state-v2';
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 /* ---------- Utility date (funzioni pure) ---------- */
 
@@ -34,31 +34,6 @@ export function dateKey(d) {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const g = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${g}`;
-}
-
-/** Somma giorni a una chiave YYYY-MM-DD restando sul fuso locale. */
-export function shiftDay(key, delta) {
-  const [y, m, g] = key.split('-').map(Number);
-  const d = new Date(y, m - 1, g);
-  d.setDate(d.getDate() + delta);
-  return dateKey(d);
-}
-
-/** Chiave valida e non futura, altrimenti oggi. */
-export function validDay(raw) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw || '')) return todayKey();
-  return raw > todayKey() ? todayKey() : raw;
-}
-
-/** Etichetta leggibile: "Oggi", "Ieri", altrimenti "Sab 18 luglio". */
-export function dayLabel(key) {
-  if (key === todayKey()) return 'Oggi';
-  if (key === shiftDay(todayKey(), -1)) return 'Ieri';
-  const [y, m, g] = key.split('-').map(Number);
-  const d = new Date(y, m - 1, g).toLocaleDateString('it-IT', {
-    weekday: 'short', day: 'numeric', month: 'long',
-  });
-  return d.charAt(0).toUpperCase() + d.slice(1);
 }
 
 /** Giorno della settimana 0=Lunedì … 6=Domenica (convenzione italiana). */
@@ -129,11 +104,6 @@ export const PASTI = [
 
 /* ---------- Temi disponibili (i valori CSS stanno in variables.css) ---------- */
 
-/** Contenitore pasti vuoto, derivato da PASTI: una sola fonte di verità. */
-export function emptyPasti() {
-  return Object.fromEntries(PASTI.map(p => [p.id, []]));
-}
-
 export const THEMES = [
   { id: 'hyper-crimson',      nome: 'Hyper Crimson' },
   { id: 'volt',               nome: 'Volt' },
@@ -175,7 +145,7 @@ function buildSeedState() {
     },
     workouts: [],
     weights: [],
-    meals: { date: todayKey(), pasti: emptyPasti() },
+    meals: { date: todayKey(), pasti: { colazione: [], pranzo: [], spuntino: [], cena: [] } },
     water: { date: todayKey(), litri: 0 },
     maxes: { squat: 0, panca: 0, stacco: 0, prev: { squat: 0, panca: 0, stacco: 0 } },
     activityDates: [],
@@ -365,6 +335,24 @@ function migrate(s) {
     v = 6;
   }
 
+  if (v === 6) {
+    /* Alimenti: il riferimento non è più fisso a 100 g.
+       I valori nutrizionali restano memorizzati normalizzati per 100 g/ml
+       (così il calcolo `kcal * g / 100` non cambia in nessun punto), ma
+       ogni alimento porta con sé il riferimento con cui è stato inserito
+       — `base` + `unita` — per poterlo rimostrare in editing.
+       `fib` nasce a null: assente ≠ zero grammi di fibre. */
+    // Gli alimenti custom vivono su IndexedDB: migrati in `normalizeFood`.
+    // Qui si sistemano solo le voci dei pasti già registrati.
+    Object.values(s.meals?.pasti || {}).forEach(items =>
+      (items || []).forEach(it => {
+        it.qta = it.qta ?? it.grammi;
+        it.unita = it.unita || 'g';
+        it.fib = it.fib ?? null;
+      }));
+    v = 7;
+  }
+
   s.schemaVersion = v;
 
   // Rete di sicurezza per campi mancanti (stati salvati a metà, import, ecc.)
@@ -486,7 +474,7 @@ export async function ensureDailyReset() {
   update(s => {
     if (s.water.date !== t) s.water = { date: t, litri: 0 };
     if (s.meals.date !== t) {
-      s.meals = { date: t, pasti: emptyPasti() };
+      s.meals = { date: t, pasti: { colazione: [], pranzo: [], spuntino: [], cena: [] } };
     }
   });
 }
@@ -518,77 +506,6 @@ export async function nutritionLastDays(n = 7) {
     totali: { ...tot, litri: state.water.litri },
   });
   return past;
-}
-
-/* ---------- Lettura/scrittura di un singolo giorno ---------- */
-
-/**
- * Un giorno qualsiasi in forma uniforme. Oggi arriva dallo stato live,
- * gli altri da IndexedDB; se il giorno non esiste torna un guscio vuoto,
- * così le viste non devono distinguere i due casi.
- * @param {string} data YYYY-MM-DD
- */
-export async function nutritionDay(data) {
-  if (data === todayKey()) {
-    return {
-      data,
-      pasti: state.meals.pasti,
-      totali: { ...dayTotals(state), litri: state.water.litri },
-      oggi: true,
-    };
-  }
-  let rec = null;
-  try {
-    rec = await db.get(db.STORES.NUTRITION, data);
-  } catch (e) {
-    console.warn('IKARO: lettura del giorno fallita.', e);
-  }
-  const pasti = { ...emptyPasti(), ...(rec?.pasti || {}) };
-  return { data, pasti, totali: rec?.totali || totalsFromPasti(pasti), oggi: false };
-}
-
-/** Persiste un giorno passato ricalcolando i totali. Vuoto ⇒ record rimosso. */
-async function writePastDay(data, pasti, litri = 0) {
-  const tot = totalsFromPasti(pasti);
-  const vuoto = tot.kcal === 0 && !litri &&
-    Object.values(pasti).every(items => items.length === 0);
-  try {
-    if (vuoto) await db.del(db.STORES.NUTRITION, data);
-    else await db.put(db.STORES.NUTRITION, { data, pasti, totali: { ...tot, litri } });
-  } catch (e) {
-    console.error('IKARO: scrittura del giorno fallita.', e);
-    notifyError('Impossibile salvare su quel giorno.');
-    return false;
-  }
-  return true;
-}
-
-/**
- * Aggiunge un alimento a un pasto di un giorno qualsiasi (oggi compreso).
- * @param {string} data YYYY-MM-DD
- */
-export async function addFoodToDay(data, pastoId, item) {
-  if (!PASTI.some(p => p.id === pastoId)) return false;
-  if (data === todayKey()) {
-    update(st => { st.meals.pasti[pastoId].push(item); });
-    return true;
-  }
-  const giorno = await nutritionDay(data);
-  giorno.pasti[pastoId] = [...(giorno.pasti[pastoId] || []), item];
-  return writePastDay(data, giorno.pasti, giorno.totali?.litri || 0);
-}
-
-/** Rimuove un alimento da un pasto di un giorno qualsiasi. */
-export async function removeFoodFromDay(data, pastoId, itemId) {
-  if (data === todayKey()) {
-    update(st => {
-      st.meals.pasti[pastoId] = st.meals.pasti[pastoId].filter(x => x.id !== itemId);
-    });
-    return true;
-  }
-  const giorno = await nutritionDay(data);
-  giorno.pasti[pastoId] = (giorno.pasti[pastoId] || []).filter(x => x.id !== itemId);
-  return writePastDay(data, giorno.pasti, giorno.totali?.litri || 0);
 }
 
 /* ---------- Storico allenamenti (cache sincrona + IndexedDB) ---------- */
@@ -646,8 +563,41 @@ export function recentSessions(limit = 20) {
 /* ---------- Alimenti custom ---------- */
 
 /** Alimenti predefiniti + creati dall'utente. */
+/** Unità di misura ammesse per quantità e riferimento nutrizionale. */
+export const UNITA = [
+  { id: 'g',  nome: 'g',  label: 'grammi',      peso: true  },
+  { id: 'ml', nome: 'ml', label: 'millilitri',  peso: true  },
+  { id: 'pz', nome: 'pz', label: 'pezzi',       peso: false },
+];
+
+/**
+ * Porta un alimento alla forma corrente, qualunque sia la sua provenienza
+ * (catalogo statico, IndexedDB scritto da una versione vecchia, import).
+ * Invariante: kcal/p/c/f/fib sono SEMPRE per 100 g (o 100 ml) di prodotto.
+ * `base` e `unita` descrivono solo come l'utente preferisce vederlo.
+ */
+export function normalizeFood(f) {
+  const unita = UNITA.some(u => u.id === f.unita) ? f.unita : 'g';
+  return {
+    ...f,
+    unita,
+    base: Number(f.base) > 0 ? Number(f.base) : 100,
+    pesoPz: unita === 'pz' ? (Number(f.pesoPz) > 0 ? Number(f.pesoPz) : 100) : null,
+    fib: f.fib === null || f.fib === undefined || f.fib === '' ? null : Number(f.fib),
+  };
+}
+
+
+/**
+ * Converte una quantità nell'unità dell'alimento in grammi/ml effettivi,
+ * che è l'unica scala su cui i macro sanno fare i conti.
+ */
+export function toBaseQty(food, qta) {
+  return food.unita === 'pz' ? qta * (food.pesoPz || 100) : qta;
+}
+
 export function allFoods() {
-  return [...customFoods, ...FOOD_DB];
+  return [...customFoods, ...FOOD_DB].map(normalizeFood);
 }
 
 export function getCustomFoods() {
@@ -682,20 +632,23 @@ export async function deleteCustomFood(id) {
 
 /* ---------- Selettori derivati (funzioni pure sullo stato) ---------- */
 
-/** Totali (kcal e macro) di un qualsiasi contenitore di pasti. */
-export function totalsFromPasti(pasti) {
-  const tot = { kcal: 0, p: 0, c: 0, f: 0 };
-  Object.values(pasti || {}).forEach(items => (items || []).forEach(it => {
+/** Totali nutrizionali del giorno corrente: kcal e macro. */
+export function dayTotals(s = state) {
+  const tot = { kcal: 0, p: 0, c: 0, f: 0, fib: 0 };
+  /* Le fibre sono un dato opzionale: molte etichette non le riportano.
+     `fibNoti` dice su quante voci il totale è realmente costruito, così
+     la UI può distinguere «0 g di fibre» da «non lo so». */
+  let fibNoti = 0, voci = 0;
+  Object.values(s.meals.pasti).forEach(items => items.forEach(it => {
     tot.kcal += it.kcal; tot.p += it.p; tot.c += it.c; tot.f += it.f;
+    voci++;
+    if (it.fib !== null && it.fib !== undefined) { tot.fib += it.fib; fibNoti++; }
   }));
   tot.kcal = Math.round(tot.kcal);
   tot.p = Math.round(tot.p); tot.c = Math.round(tot.c); tot.f = Math.round(tot.f);
+  tot.fib = Math.round(tot.fib * 10) / 10;
+  tot.fibParziale = voci > 0 && fibNoti < voci;
   return tot;
-}
-
-/** Totali nutrizionali del giorno corrente: kcal e macro. */
-export function dayTotals(s = state) {
-  return totalsFromPasti(s.meals.pasti);
 }
 
 /** Streak: giorni consecutivi con attività, calcolato a ritroso da oggi. */
